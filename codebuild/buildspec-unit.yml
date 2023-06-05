@@ -1,0 +1,22 @@
+version: 0.2                                                # Specify aws build system version
+run-as: root                                                # Specify what user to run the build as
+
+env:                                                        # Environment specific settings
+  shell: /bin/bash                                          # Specify what shell to use when executing
+  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+
+phases:
+  #  install:
+  # Currently both java 17 and  node come installed in the image
+  #    runtime-versions:
+  #      java: corretto17
+  pre_build:
+    commands:
+      - echo this is pre-build
+      - java --version
+  build:
+    commands:
+      - ./gradlew test
+  post_build:
+    commands:
+      - echo this is post-build

@@ -1,0 +1,22 @@
+version: 0.2                                                # Specify aws build system version
+run-as: root                                                # Specify what user to run the build as
+
+env:                                                        # Environment specific settings
+  shell: /bin/bash                                          # Specify what shell to use when executing
+  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+
+batch:          # Configuring the 'batch' block is the only way to achieve parallel execution using the aws build system
+  fast-fail: true                                           # Fail as soon as one part of the build fails
+  build-list:                                               # A list of all the builds to execute in parallel
+    - identifier: unit_test                                 # Identifiers may only contain underscores, NO DASHES!!!
+      env:                                                  # Environment variables available to the sub-build?
+        variables:
+          BUILD_ID: unit-test
+      buildspec: .codebuild/buildspec-unit.yml              # Specify sub build instructions
+      ignore-failure: false                                 # Stop execution if something fails
+    - identifier: integration_test                          # Identifiers may only contain underscores, NO DASHES!!!
+      env:                                                  # Environment variables available to the sub-build?
+        variables:
+          BUILD_ID: integration-test
+      buildspec: .codebuild/buildspec-integration.yml       # Specify sub build instructions
+      ignore-failure: false                                 # Stop execution if something fails

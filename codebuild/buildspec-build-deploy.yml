@@ -1,0 +1,33 @@
+version: 0.2                                                # Specify aws build system version
+run-as: root                                                # Specify what user to run the build as
+
+env:                                                        # Environment specific settings
+  shell: /bin/bash                                          # Specify what shell to use when executing
+  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+  variables:
+    STAGE_NAME: dev
+  #  secrets-manager:
+  #    key: secret-id:json-key:version-stage:version-id
+
+  # THIS STEP NEEDS A WAY TO GET THE CREDENTIALS TO COMPLETE THE DEPLOYMENT
+
+phases:
+  install:
+    # Currently both java 17 and  node come installed in the image
+    #    runtime-versions:
+    #      java: corretto17
+    #      nodejs: 18
+    commands:
+      - npm install -g serverless
+      - npm install -g aws-sso-credentials-getter
+  pre_build:
+    commands:
+      - echo this is pre-build
+  build:
+    commands:
+      - ./gradlew shadow
+  post_build:
+    commands:
+      - echo this is post-build
+      - serverless deploy --stage ${STAGE_NAME}
+      - echo Build is complete
