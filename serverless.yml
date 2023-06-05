@@ -1,0 +1,170 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+frameworkVersion: '3'                                   # Set what version of serverless is being used
+
+service: boeing-gradle-lambda-template                  # This should match the application name specified in the settings.gradle
+#plugins:                                                # Specify any additional plugins for serverless - be aware that these can increase cold start time
+#  # Ref: https://www.serverless.com/plugins/serverless-offline
+#  - serverless-offline                                  # Helper plugin that allows for offline testing of lambdas - THIS ONLY SUPPORTS Node.js, Python, Ruby and Go λ runtimes.
+
+custom:                                                 # Set custom options / variables for serverless
+  personsTableName: 'Person'
+  #  personsTableName: 'java-persons-${self:provider.stage}'
+  # Reference: https://sst.dev/chapters/stages-in-serverless-framework.html
+  stage: ${opt:stage, self:provider.stage}              # use the --stage CLI option if it exists. If it does not, then use the default stage specified by provider.stage
+  envVar:
+    MESSAGE:
+      dev:   "This is the development environment"
+      test:  "This is the test environment"
+      rgrs:  "This is the regression environment"
+      stage: "This is the staging environment"
+      prod:  "This is the production environment"
+  # Reference: https://sst.dev/chapters/configure-multiple-aws-profiles.html
+  profiles:                                             # These values MUST match an AWS Profile in the `./aws/credentials` file. example [default]
+    dev:   default
+    test:  testAccount
+    rgrs:  rgrsAccount
+    stage: stageAccount
+    prod:  prodAccount
+  ######################################################################################################################
+  # WARNING: Since this example creates a DB table it currently can not be deployed to multiple stages without some
+  # level of modification. ie the table create would need to be extracted to a separate serverless.yml file.
+  ######################################################################################################################
+
+provider:
+  name: aws                                             # Selected cloud provider
+  runtime: java17                                       # Selected runtime
+  stage: ${opt:stage, 'dev'}                            # Uses user specified stage (--stage VALUE) or defaults to dev
+  region: ${opt:region, 'us-east-2'}                    # Uses user specified region (--region VALUE) or defaults to `us-east-2`
+  profile: ${self:custom.profiles.${self:custom.stage}} # Uses profile based on selected stage. Meaning including "--aws-profile VALUE" is not required.
+  endpointType: REGIONAL                                # THIS VALUE MAY NEED TO CHANGE BASED ON THE APPLICATIONS PURPOSE
+  timeout: 20                                           # optional, in seconds, default is 6
+  httpApi:                                              # Aws HTTP Api Gateway
+    cors: false                                         # Enable / Disable CORS - Ref:https://www.serverless.com/framework/docs/providers/aws/events/http-api#cors-setup
+    metrics: true                                       # Enable metrics
+    useProviderTags: true                               # Explicitly tells the application to use tags defined under the tags element
+    disableDefaultEndpoint: false                       # Require the use of a custom domain. Ie the default aws urls will not be callable
+#  apiGateway:                                           # Aws REST Api Gateway
+#    metrics: true                                       # Enable metrics
+  tracing:                                              # Distributed tracing configuration (ie Aws X-Ray)
+    lambda: true                                        # Enables X-Ray for Lambdas
+#    apiGateway: true                                    # Enables X-Ray for Api-Gateway - ONLY AVAILABLE FOR REST API GATEWAY; NOT AVAILABLE FOR HTTP GATEWAY
+  tags:                                                 # Note: If the API Gateway has any existing tags applied outside of Serverless Framework, they will be removed during deployment.
+    project: my-project                                 # Tags a HTTP Lambda
+    #tagKey: my-project                                  # Tags a REST Lambda
+#  stackTags:                                            # ONLY available to REST Lambda
+#    stackTagKey: lambda-gradle-serverless
+  logs:                                                 # Additional logging configuration - This will create an additional log file in cloudwatch
+    httpApi: true                                       # Enables logs for Aws HTTP Api Gateway - Ref: https://www.serverless.com/framework/docs/providers/aws/events/http-api#access-logs
+#    restApi: true                                       # Enables logs for Aws REST Api Gateway - Ref: https://www.serverless.com/framework/docs/providers/aws/events/apigateway#logs
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["PersonsDynamoDBTable", "Arn" ] }
+  environment:                                          # Set environment variables - these are available to the application at runtime
+    TABLE_NAME: ${self:custom.personsTableName}
+    MESSAGE: ${self:custom.envVar.MESSAGE.${self:custom.stage}}
+
+package:                                                # Specify the artifact to publish
+  artifact: 'build/libs/${self:service}-0.0.1-SNAPSHOT-all.jar'
+#  artifact: 'build/libs/${self:service}-${self:provider.stage}-all.jar'
+
+functions:
+#  listPersonsREST:
+#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
+#    events:
+#      - http:
+#          path: /persons-rest
+#          method: get
+#          private: true   # This makes the api require an apiKey
+  listPersonsHTTP:
+    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
+    events:
+      - httpApi:
+          path: /${self:custom.stage}/persons-http
+          method: get
+#          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
+#            name: auth0Authorizer
+#  getPersonREST:
+#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
+#    events:
+#      - http:
+#          path: /persons-rest/{id}
+#          method: get
+#          private: true   # This makes the api require an apiKey
+#    environment:
+#      TABLE_NAME: ${self:custom.personsTableName}
+  getPersonHTTP:
+    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
+    events:
+      - httpApi:
+          path: /${self:custom.stage}/persons-http/{id}
+          method: get
+#          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
+#            name: auth0Authorizer
+    environment:
+      TABLE_NAME: ${self:custom.personsTableName}
+#  createPersonREST:
+#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleRequest
+#    events:
+#      - http:
+#          path: /persons-rest
+#          method: put
+#          private: true   # This makes the api require an apiKey
+#    environment:
+#      TABLE_NAME: ${self:custom.personsTableName}
+  createPersonHTTP:
+    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.CreatePersonHandler::handleRequest
+    events:
+      - httpApi:
+          path: /${self:custom.stage}/persons-http
+          method: put
+#          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
+#            name: auth0Authorizer
+    environment:
+      TABLE_NAME: ${self:custom.personsTableName}
+#  deleteProduct:
+#    handler: com.serverless.DeleteProductHandler
+#    events:
+#      - http:
+#          path: /products/{id}
+#          method: delete
+
+resources:
+  Resources:
+    PersonsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      #DeletionPolicy: Retain  # makes sure it does not get deleted but will still fail when it attempts to recreate
+      Properties:
+        TableName: ${self:custom.personsTableName}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        #          - AttributeName: name
+        #            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        #          - AttributeName: name
+        #            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

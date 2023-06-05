@@ -1,0 +1,242 @@
+import static java.lang.Boolean.parseBoolean
+/** --------------------------------------------------------------------------------------------------------------------
+ * JaCoCo: Configuration for JaCoCo with additional reporting tasks.
+ * ------------------------------------------------------------------------------------------------------------------ */
+String packageRulePercent, instructionRulePercent, lineRulePercent, buildRulePercent, methodRulePercent
+BigDecimal packageCoverage, instructionCoverage, lineCoverage, branchCoverage, methodCoverage
+boolean jacocoEnabled, jacocoCsvEnabled, jacocoXmlEnabled, jacocoHtmlEnabled, packageRule, instructionRule, lineRule, branchRule, methodRule
+
+if (allowEnvOverride) {
+    // Allow for these variables to be overridden by env variables if desired but have a fallback to a reasonable default
+    jacocoEnabled                           = parseBoolean((String) System.env.TEMPLATE_JACOCO_ENABLED)              ?: parseBoolean("$jacocoPluginEnabled")
+    jacocoCsvEnabled                        = parseBoolean((String) System.env.TEMPLATE_JACOCO_CSV_REPORT)           ?: parseBoolean("$jacocoCsvReportEnabled")
+    jacocoXmlEnabled                        = parseBoolean((String) System.env.TEMPLATE_JACOCO_XML_REPORT)           ?: parseBoolean("$jacocoXmlReportEnabled")
+    jacocoHtmlEnabled                       = parseBoolean((String) System.env.TEMPLATE_JACOCO_HTML_REPORT)          ?: parseBoolean("$jacocoHtmlReportEnabled")
+    packageRule                             = parseBoolean((String) System.env.TEMPLATE_JACOCO_PKG_RULE_ENABLED)     ?: parseBoolean("$jacocoPackageRuleEnabled")
+    instructionRule                         = parseBoolean((String) System.env.TEMPLATE_JACOCO_INS_RULE_ENABLED)     ?: parseBoolean("$jacocoInstructionRuleEnabled")
+    lineRule                                = parseBoolean((String) System.env.TEMPLATE_JACOCO_LINE_RULE_ENABLED)    ?: parseBoolean("$jacocoLineRuleEnabled")
+    branchRule                              = parseBoolean((String) System.env.TEMPLATE_JACOCO_BRANCH_RULE_ENABLED)  ?: parseBoolean("$jacocoBranchRuleEnabled")
+    methodRule                              = parseBoolean((String) System.env.TEMPLATE_JACOCO_METHOD_RULE_ENABLED)  ?: parseBoolean("$jacocoMethodRuleEnabled")
+
+    // Application Test Coverage Percentage
+    packageRulePercent                      = System.env.TEMPLATE_JACOCO_PACKAGE_RULE_PERCENT
+    instructionRulePercent                  = System.env.TEMPLATE_JACOCO_INSTRUCTION_RULE_PERCENT
+    lineRulePercent                         = System.env.TEMPLATE_JACOCO_LINE_RULE_PERCENT
+    buildRulePercent                        = System.env.TEMPLATE_JACOCO_BRANCH_RULE_PERCENT
+    methodRulePercent                       = System.env.TEMPLATE_JACOCO_METHOD_RULE_PERCENT
+
+    packageCoverage                         = (packageRulePercent != null && packageRulePercent != '') ?
+            BigDecimal.valueOf(Double.valueOf(packageRulePercent)) : BigDecimal.valueOf(Double.valueOf("$jacocoPackageRulePercent"))
+    instructionCoverage                     = (instructionRulePercent != null && instructionRulePercent != '') ?
+            BigDecimal.valueOf(Double.valueOf(instructionRulePercent)) : BigDecimal.valueOf(Double.valueOf("$jacocoInstructionRulePercent"))
+    lineCoverage                            = (lineRulePercent != null && lineRulePercent != '') ?
+            BigDecimal.valueOf(Double.valueOf(lineRulePercent)) : BigDecimal.valueOf(Double.valueOf("$jacocoLineRulePercent"))
+    branchCoverage                          = (buildRulePercent != null && buildRulePercent != '') ?
+            BigDecimal.valueOf(Double.valueOf(buildRulePercent)) : BigDecimal.valueOf(Double.valueOf("$jacocoBranchRulePercent"))
+    methodCoverage                          = (methodRulePercent != null && methodRulePercent != '') ?
+            BigDecimal.valueOf(Double.valueOf(methodRulePercent)) : BigDecimal.valueOf(Double.valueOf("$jacocoMethodRulePercent"))
+} else {
+    jacocoEnabled                           = parseBoolean("$jacocoPluginEnabled")
+    jacocoCsvEnabled                        = parseBoolean("$jacocoCsvReportEnabled")
+    jacocoXmlEnabled                        = parseBoolean("$jacocoXmlReportEnabled")
+    jacocoHtmlEnabled                       = parseBoolean("$jacocoHtmlReportEnabled")
+    packageRule                             = parseBoolean("$jacocoPackageRuleEnabled")
+    instructionRule                         = parseBoolean("$jacocoInstructionRuleEnabled")
+    lineRule                                = parseBoolean("$jacocoLineRuleEnabled")
+    branchRule                              = parseBoolean("$jacocoBranchRuleEnabled")
+    methodRule                              = parseBoolean("$jacocoMethodRuleEnabled")
+    // Application Test Coverage Percentage
+    packageCoverage                         = BigDecimal.valueOf(Double.valueOf("$jacocoPackageRulePercent"))
+    instructionCoverage                     = BigDecimal.valueOf(Double.valueOf("$jacocoInstructionRulePercent"))
+    lineCoverage                            = BigDecimal.valueOf(Double.valueOf("$jacocoLineRulePercent"))
+    branchCoverage                          = BigDecimal.valueOf(Double.valueOf("$jacocoBranchRulePercent"))
+    methodCoverage                          = BigDecimal.valueOf(Double.valueOf("$jacocoMethodRulePercent"))
+}
+// There should not be a reason to need to override these as they are for dev work only
+final boolean buildHelp                     = parseBoolean("$buildHelpEnabled")
+
+println "\n************************* APPLICATION FEATURE ENABLED *************************\n"
+println "JaCoCo enabled for tests?: "       + jacocoEnabled
+println "Html Reports enabled for tests?: " + htmlReportsEnabled
+
+if (jacocoEnabled) {
+    println "Coverage rules enabled - Line: " + lineRule + ", Branch: " + branchRule + ", Method: " + methodRule
+    println "Minimum test coverage ratio expected for Line: " + lineCoverage + ", Branch: " + branchCoverage + ", Method: " + methodCoverage
+    println "JaCoCo reports enabled - Csv: " + jacocoCsvEnabled + ", Xml: " + jacocoXmlEnabled + ", Html: " + jacocoHtmlEnabled
+}
+
+if (buildHelp) {
+    // Checks to see assigned properties from the ENVIRONMENT match the default values in the gradle.properties file
+    println "Build Help is enabled ... checking if env properties match gradle properties"
+    assert jacocoEnabled        == parseBoolean("$jacocoPluginEnabled"): "Environment setting is different than property setting"
+    assert jacocoCsvEnabled     == parseBoolean("$jacocoCsvEnabled"): "Environment setting is different than property setting"
+    assert jacocoXmlEnabled     == parseBoolean("$jacocoXmlEnabled"): "Environment setting is different than property setting"
+    assert jacocoHtmlEnabled    == parseBoolean("$jacocoHtmlEnabled"): "Environment setting is different than property setting"
+    assert packageRule          == parseBoolean("$jacocoPackageRuleEnabled"): "Environment setting is different than property setting"
+    assert instructionRule      == parseBoolean("$jacocoInstructionRuleEnabled"): "Environment setting is different than property setting"
+    assert lineRule             == parseBoolean("$jacocoLineRuleEnabled"): "Environment setting is different than property setting"
+    assert branchRule           == parseBoolean("$jacocoBranchRuleEnabled"): "Environment setting is different than property setting"
+    assert methodRule           == parseBoolean("$jacocoMethodRuleEnabled"): "Environment setting is different than property setting"
+    assert packageCoverage      == BigDecimal.valueOf(Double.valueOf("$jacocoPackageRulePercent")): "Environment setting is different than property setting"
+    assert instructionCoverage  == BigDecimal.valueOf(Double.valueOf("$jacocoInstructionRulePercent")): "Environment setting is different than property setting"
+    assert lineCoverage         == BigDecimal.valueOf(Double.valueOf("$jacocoLineRulePercent")): "Environment setting is different than property setting"
+    assert branchCoverage       == BigDecimal.valueOf(Double.valueOf("$jacocoBranchRulePercent")): "Environment setting is different than property setting"
+    assert methodCoverage       == BigDecimal.valueOf(Double.valueOf("$jacocoMethodRulePercent")): "Environment setting is different than property setting"
+}
+/** --------------------------------------------------------------------------------------------------------------------
+ * JaCoCo Config:
+ *
+ * This section is part config part documentation so that it is easy to understand how JaCoCo is configured
+ * ------------------------------------------------------------------------------------------------------------------ */
+jacoco {
+    toolVersion = "$jacocoVersion"                                              // Default version is 0.8.7
+    // It is possible to change the output report location by changing the following line
+    // reportsDirectory = layout.buildDirectory.dir('customJacocoReportDir')    // Default report location is $buildDir/reports/jacoco
+}
+/** --------------------------------------------------------------------------------------------------------------------
+ * JaCoCo Report Config
+ *
+ * This block can be used to configure jacoco reports globally.
+ *
+ * NOTE: For our purposes we will NOT be using this but it is here for reference to help improve understanding of what
+ * is occurring.
+ * ------------------------------------------------------------------------------------------------------------------ */
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report - not sure this is actually needed
+    reports {
+        xml.required = jacocoXmlEnabled
+        csv.required = jacocoCsvEnabled
+        html.required = jacocoHtmlEnabled
+        // It is possible to change the output report location by changing the following line
+        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')       // Default report location is $buildDir/reports/jacoco
+        xml.destination file("${rootProject.projectDir}/build/reports/jacoco/report.xml")
+    }
+}
+/** --------------------------------------------------------------------------------------------------------------------
+ * JaCoCo Report Config (Custom)
+ *
+ * This closure is for following the write once principle and will be passed into the custom report generation tasks
+ * present in this file. It controls which reports are generated by JaCoCo and is currently set to create only the
+ * html report. Change the booleans in the gradle.properties file if additional reporting is required.
+ * ------------------------------------------------------------------------------------------------------------------ */
+final customJacocoReport = {                            // Expected Defaults (all values should be set in gradle.properties)
+    classDirectories.setFrom files(project.sourceSets.main.output)
+    sourceDirectories.setFrom files(project.sourceSets.main.allSource.srcDirs)
+
+    reports {
+        xml.required = jacocoCsvEnabled           // false
+        csv.required = jacocoXmlEnabled           // false
+        html.required = jacocoHtmlEnabled         // true
+    }
+}
+/** --------------------------------------------------------------------------------------------------------------------
+ * JaCoCo Coverage Config:
+ *
+ * This block configures our coverage metrics. While multiple limits may be included in a single rule our coverage is
+ * broken out into separate rules for greater control of our gating process. To configure if a rule is active or to
+ * change the minimum coverage percentage update the value in the gradle.properties file.
+ * ------------------------------------------------------------------------------------------------------------------ */
+jacocoTestCoverageVerification {                        // Expected Defaults (all values should be set in gradle.properties)
+    violationRules {
+        // Package Rule
+        rule {                      // Line Rule:
+            enabled = packageRule                       // true
+            element = "$jacocoPackageRuleElement"       // PACKAGE
+            excludes = [
+
+            ]
+
+            limit {
+                counter = "$jacocoPackageRuleCounter"   // LINE
+                value = "$jacocoPackageRuleType"        // COVEREDRATIO
+                minimum = packageCoverage               // 0.90
+            }
+        }
+        // Instruction Rule
+        rule {                      // Line Rule:
+            enabled = instructionRule                   // true
+            element = "$jacocoInstructionRuleElement"   // CLASS
+            excludes = [
+
+            ]
+
+            limit {
+                counter = "$jacocoInstructionRuleCounter" // INSTRUCTION
+                value = "$jacocoInstructionRuleType"      // COVEREDRATIO
+                minimum = instructionCoverage             // 0.80
+            }
+        }
+        // Line Rule
+        rule {                      // Line Rule:
+            enabled = lineRule                          // true
+            element = "$jacocoLineRuleElement"          // CLASS
+            excludes = [
+
+            ]
+
+            limit {
+                counter = "$jacocoLineRuleCounter"      // LINE
+                value = "$jacocoLineRuleType"           // COVEREDRATIO
+                minimum = lineCoverage                  // 0.80
+            }
+        }
+        // Branch Rule
+        rule {                      // Branch Rule:
+            enabled = branchRule                        // true
+            element = "$jacocoBranchRuleElement"        // CLASS
+            excludes = [
+
+            ]
+
+            limit {
+                counter = "$jacocoBranchRuleCounter"    // BRANCH
+                value = "$jacocoBranchRuleType"         // COVEREDRATIO
+                minimum = branchCoverage                // 0.80
+            }
+        }
+        // Method Rule
+        rule {                      // Method Rule:
+            enabled = methodRule                        // true
+            element = "$jacocoMethodRuleElement"        // CLASS
+            excludes = [
+
+            ]
+
+            limit {
+                counter = "$jacocoMethodRuleCounter"    // METHOD
+                value = "$jacocoMethodRuleType"         // COVEREDRATIO
+                minimum = methodCoverage                // 0.80
+            }
+        }
+    }
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Test Reporting:
+ *
+ * These are intended to only be executed by the test blocks themselves, not manually. In the event you want to run any
+ * of these manually check to make sure that under build/jacoco an exec file exists. If no exec files are present these
+ * tasks will not generate any kind of report. These values should not need to change unless there are test block naming
+ * changes or additional source sets that are added.
+ *
+ * Note: These tasks are configured with the customJacocoReport closure that is configured above.
+ * ------------------------------------------------------------------------------------------------------------------ */
+task combineJaCoCoReports(type: JacocoReport) {
+//    dependsOn(adminIntTest)
+//    dependsOn(flowableIntTest)
+//    dependsOn(integrationTest)
+    executionData fileTree(project.buildDir.absolutePath).include("jacoco/*.exec")
+    configure customJacocoReport
+}
+
+task unitTestReports(type: JacocoReport) {
+    executionData fileTree(project.buildDir.absolutePath).include("jacoco/test.exec")
+    configure customJacocoReport
+    finalizedBy packageUnitReports
+}
+
+task integrationTestReports(type: JacocoReport) {
+    executionData fileTree(project.buildDir.absolutePath).include("jacoco/integrationTest.exec")
+    configure customJacocoReport
+    finalizedBy packageIntReports
+}

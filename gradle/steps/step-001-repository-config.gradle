@@ -1,0 +1,52 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Repository Config: Configuration for external maven and nexus repositories the application is looking for.
+ * - requires a bit bucket username and password
+ * ------------------------------------------------------------------------------------------------------------------ */
+
+println "\n**************************** VERSION CONTROL DETAILS ***************************\n"
+
+//if (vcsUserUuid != null) {
+//    println "Current VCS build triggered by user: vcsUserUuid"
+//} else {
+//    println "Current VCS build triggered by an unknown initiator (This more than likely indicates a local build)"
+//}
+//
+//if (vcsBranch != null) {
+//    println "Current VCS branch: vcsBranch"
+//} else {
+//    println "Current VCS branch is unknown"
+//}
+//
+// Stop the build if VCS credentials are not present
+//if (!vcsUser || !vcsPass) {
+//    println "\nCan not build application without VCS User/Pass"
+//    throw new RuntimeException("Can not build application without VCS User/Pass")
+//} else {
+//    println "\n********************************************************************************"
+//    println "************************* VCS credentials are present *************************"
+//    println "********************************************************************************"
+//}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    //maven { url 'https://repo.spring.io/release' }
+    // If you need to define custom maven repo
+//    maven {
+//        url = uri("https://maven.pkg.github.com/your-company/your-libraries")
+//        credentials {
+//            username = project.findProperty("gpr.user") as String ?: vcsUser
+//            password = project.findProperty("gpr.key") as String ?: vcsPass
+//        }
+//    }
+//    maven {
+//        url 'https://api.bitbucket.org/2.0/repositories/your-company/your-libraries/src/releases'
+//        credentials {
+//            username = vcsUser
+//            password = vcsPass
+//        }
+//        authentication {
+//            basic(BasicAuthentication)
+//        }
+//    }
+}

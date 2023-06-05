@@ -1,0 +1,31 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * List of directories and / or files to exclude from COVERAGE metrics. To be explicit, items included in this list will
+ * be excluded from Sonar coverage metrics BUT will still be analyzed. To state a different way this is not excluding
+ * items in the list from being checked against Sonar standards, it is just excluding them from test coverage metrics.
+ * IE. We dont want it saying that our tests need tests.
+ * <p></p>
+ * For a list of available properties that can be configured see the following documentation ...
+ * - https://docs.sonarqube.org/latest/analysis/analysis-parameters/
+ * Additional Documentation
+ * - https://docs.sonarqube.org/latest/analysis/scan/sonarscanner-for-gradle/
+ * - https://docs.sonarqube.org/latest/user-guide/quality-gates/
+ * - https://docs.sonarqube.org/latest/project-administration/narrowing-the-focus/
+ * ------------------------------------------------------------------------------------------------------------------ */
+final exclusionList = [
+        "src/test/**",
+//        "src/testUnauthenticatedApi/**",
+//        "src/testAuthenticatedApi/**",
+//        "src/testApiValidation/**"
+]
+
+sonarqube {
+    properties {
+        // Make sure the project name is set correctly for sonar
+        property "sonar.projectName", "FILL-IN-WITH-PROJECT-NAME"
+        // Exclude classes in the list from coverage metrics
+        property "sonar.coverage.exclusions", exclusionList
+        // Quality gate is disabled by default so as not to cause issues with normal builds
+        // and is only enabled (through the pipeline) for pull requests.
+        property "sonar.qualitygate.wait", false
+    }
+}

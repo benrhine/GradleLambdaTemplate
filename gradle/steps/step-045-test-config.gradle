@@ -1,0 +1,155 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Imports / Object declarations: These imports and object declarations are expected to be red. For some reason being a
+ * build file IntelliJ cant correctly see them but they are in actuality present and available.
+ * ------------------------------------------------------------------------------------------------------------------ */
+import static java.lang.Boolean.parseBoolean
+import static java.lang.Integer.parseInt
+
+import groovy.time.TimeCategory
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Test Configuration
+ *  ----------------------------------------------------------------------------------------------------------------- */
+testlogger {
+    theme 'mocha'
+    showExceptions true
+    showStackTraces true
+    showFullStackTraces false
+    showCauses true
+    slowThreshold 2000
+    showSummary true
+    showSimpleNames false
+    showPassed true
+    showSkipped true
+    showFailed true
+    showOnlySlow false
+    showStandardStreams parseBoolean("$testShowStandardStreams")
+    showPassedStandardStreams true
+    showSkippedStandardStreams true
+    showFailedStandardStreams true
+    logLevel 'lifecycle'
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Task: Unit Tests - Execute application unit tests (This test set should be validating semi-atomic increments of code)
+ *  ----------------------------------------------------------------------------------------------------------------- */
+test { testTask ->
+    maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))           // Set max threads to speed up tests
+    reports.html.required = htmlReportsEnabled                                      // Configured in gradle.properties
+//    ignoreFailures = true
+
+    retry {
+        maxRetries = 2
+        maxFailures = 20
+        failOnPassedAfterRetry = true
+    }
+
+    useJUnitPlatform {
+        if (!parseBoolean("$testAllEnabled")) {
+            // To run all available tests with ./gradlew clean test set `testAllEnabled` in gradle.properties to true
+            excludeTags "int", "slow", "thin", "load"
+        }
+    }
+
+    jacoco {
+        enabled = jacocoEnabled                                         // Configured in gradle.properties
+    }
+    finalizedBy unitTestReports                                         // instructs the tests to finish by generating a coverage report
+
+    afterSuite { desc, result ->
+        project.buildColor = result.failedTestCount == 0 ? "good" : "danger"
+
+        if (desc.parent) {
+            return
+        } // Only summarize results for whole modules
+
+        final String summary = "${result.resultType} " +
+                "(" +
+                "${result.testCount} tests, " +
+                "${result.successfulTestCount} successes, " +
+                "${result.failedTestCount} failures, " +
+                "${result.skippedTestCount} skipped" +
+                ") " +
+                "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
+                "\n"
+
+        project.testResults = []
+        // Add reports in `testsUnitResults`, keep failed suites at the end
+        if (result.resultType == TestResult.ResultType.SUCCESS) {
+            project.testResults.add(0, summary)
+        } else {
+            project.testResults += summary
+        }
+    }
+
+}
+
+test.finalizedBy combineJaCoCoReports                   // Combine all present JaCoCo reports (exec files) into one
+//combineJaCoCoReports.finalizedBy sendUnitTestAlert
+//sendUnitTestAlert.finalizedBy sendUnitTestResults
+
+//check.dependsOn adminIntTest
+//check.dependsOn flowableIntTest
+//check.dependsOn integrationTest                         // Ensure integration tests are ran when ./gradlew build is executed
+//check.dependsOn gitChangelogTask                        // Ensure a changelog is generated on each build for reference
+
+if (jacocoEnabled) {
+    check.dependsOn jacocoTestCoverageVerification      // Ensure code coverage is enforced when ./gradlew build is executed
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Task: Integration Tests - Executes "live" tests against real resources.
+ *  ----------------------------------------------------------------------------------------------------------------- */
+task integrationTest(type: Test) {
+    maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))   // Set max threads to speed up tests
+    reports.html.required = htmlReportsEnabled                              // Configured in gradle.properties
+    description = 'Runs integration tests'
+    group = 'verification'
+
+    retry {
+        maxRetries = 2
+        maxFailures = 20
+        failOnPassedAfterRetry = true
+    }
+
+    useJUnitPlatform {
+        includeTags 'int'
+    }
+
+    jacoco {
+        enabled = jacocoEnabled                                         // Configured in gradle.properties
+    }
+    finalizedBy integrationTestReports                                  // instructs the tests to finish by generating a coverage report
+
+    afterSuite { desc, result ->
+        buildColor = result.failedTestCount == 0 ? "good" : "danger"
+
+        if (desc.parent) {
+            return
+        } // Only summarize results for whole modules
+
+        final String summary = "${result.resultType} " +
+                "(" +
+                "${result.testCount} tests, " +
+                "${result.successfulTestCount} successes, " +
+                "${result.failedTestCount} failures, " +
+                "${result.skippedTestCount} skipped" +
+                ") " +
+                "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
+                "\n"
+
+        project.testResults = []
+        // Add reports in `testsIntResults`, keep failed suites at the end
+        if (result.resultType == TestResult.ResultType.SUCCESS) {
+            rootProject.testResults.add(0, summary)
+        } else {
+            rootProject.testResults += summary
+        }
+    }
+}
+
+//integrationTest.finalizedBy combineJaCoCoReports                   // Combine all present JaCoCo reports (exec files) into one
+//integrationTest.finalizedBy sendIntTestAlert
+//sendIntTestAlert.finalizedBy sendIntTestResults
+
+

@@ -1,0 +1,72 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Additional Code Sources and Config: Configuration of additional source sets and global excludes.
+ * This enables the project to run component/API tests external to the initial build to enable full API testing on the
+ * pipeline build.
+ * ------------------------------------------------------------------------------------------------------------------ */
+sourceSets {
+//    main {
+//        java {
+//            // Exclude the bootstrap classes when building a production artifact
+//            exclude 'com/benrhine/SpringBoot2022Example/v1/bootstrap/**'
+//        }
+//    }
+//    testAuthenticatedApi {
+//        java.srcDir "$projectDir/src/testAuthenticatedApi/java"
+//        // The next line is commented out because it breaks the component/api tests.
+//        // Spring is throwing the following error when tries to start the context up:
+//        // Could not resolve placeholder 'admin.endpoint' in value "${admin.endpoint}".
+//        // This was working on previous commits and we don't understand yet why is failing now.
+//        // We'll revisit this issue later.
+//        // This patch needs the application.yml copied manually from src/main/resources to
+//        // src/testAuthenticatedApi/resources.
+//        //resources.srcDir "$projectDir/src/testAuthenticatedApi/resources"
+//        compileClasspath += main.output + test.output
+//        runtimeClasspath += main.output + test.output
+//    }
+//    testUnauthenticatedApi {
+//        java.srcDir "$projectDir/src/testUnathenticatedApi/java"
+//        //resources.srcDir "$projectDir/src/testUnathenticatedApi/resources"
+//
+//        compileClasspath += main.output + test.output
+//        runtimeClasspath += main.output + test.output
+//    }
+//    testApiValidation {
+//        java.srcDir "$projectDir/src/testApiValidation/java"
+//
+//        compileClasspath += main.output + test.output
+//        runtimeClasspath += main.output + test.output
+//    }
+}
+
+configurations {
+    // This comes generated from spring initializer
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    implementation {
+        // This excludes legacy junit (4) to ensure all test imports are the correct
+        // junit 5 imports
+        exclude group: 'junit', module: 'junit'
+    }
+
+//    testAuthenticatedApiImplementation.extendsFrom testImplementation
+//    testAuthenticatedApiRuntime.extendsFrom testRuntime
+//
+//    testUnauthenticatedApiImplementation.extendsFrom testImplementation
+//    testUnauthenticatedApiRuntime.extendsFrom testRuntime
+//
+//    testApiValidationImplementation.extendsFrom testImplementation
+//    testApiValidationRuntime.extendsFrom testRuntime
+
+    downloadDependenciesConfig.extendsFrom implementation, testImplementation, testRuntime
+
+    testImplementation.exclude group: 'com.vaadin.external.google', module: 'android-json'
+}
+
+// Add ability to reference gradle.properties in application.yml
+// This ONLY applies to Spring based projects
+//processResources {
+//    filesMatching('**/**/application.yml') {
+//        expand(project.properties)
+//    }
+//}

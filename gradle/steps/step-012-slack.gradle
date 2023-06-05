@@ -1,0 +1,310 @@
+slackConfig {
+    webHook = slackWebHook
+    uploadUrl = slackUpload
+    displayLogging = true
+    token  = slackToken
+}
+
+// This will build static messages at application startup time
+slackMessages {
+    applicationBuildStart {
+        attachment {
+            fallback = "$project.name build starting ..."
+            pretext = "$project.name build starting ..."
+            color = "good"
+            field {
+                title = "Build Info"
+                value = "*Version*: $project.version"
+                shortValue = true
+            }
+            field {
+                title = "Git Info"
+                value = "*Branch*: $branch\n*Commit*: $commit"
+                shortValue = true
+            }
+        }
+    }
+    unitTest {
+        channels = "CHANNEL ID" 								// (Required) Currently only used for upload
+        uploadFileName = "unitJacoco.zip"						// (Required) Only used for upload
+        uploadFileType = "zip"									// (Optional) Only used for upload
+        uploadTitle = "JaCoCo Coverage Report"					// (Optional) Only used for upload
+        attachment {
+            fallback = "Unit tests successfully completed."
+            pretext = "Unit tests successfully completed."
+            color = buildColor
+            field {
+                title = "Application"
+                value = project.name
+                shortValue = true
+            }
+            field {
+                title = "Version"
+                value = project.version
+                shortValue = true
+            }
+            field {
+                title = "Branch"
+                value = "$branch"
+                shortValue = true
+            }
+            field {
+                title = "Commit"
+                value = "$commit"
+                shortValue = true
+            }
+        }
+        attachment {
+            color = buildColor
+            field {
+                title = "Results"
+                value = "N / A"
+                shortValue = false
+            }
+        }
+    }
+    intTest {
+        channels = "CHANNEL ID"								// (Required) Currently only used for upload
+        uploadFileName = "intJacoco.zip"						// (Required) Only used for upload
+        uploadFileType = "zip"									// (Optional) Only used for upload
+        uploadTitle = "JaCoCo Coverage Report"					// (Optional) Only used for upload
+        attachment {
+            fallback = "Integration tests successfully completed."
+            pretext = "Integration tests successfully completed."
+            color = buildColor
+            field {
+                title = "Application"
+                value = project.name
+                shortValue = true
+            }
+            field {
+                title = "Version"
+                value = project.version
+                shortValue = true
+            }
+            field {
+                title = "Branch"
+                value = "$branch"
+                shortValue = true
+            }
+            field {
+                title = "Commit"
+                value = "$commit"
+                shortValue = true
+            }
+        }
+        attachment {
+            color = buildColor
+            field {
+                title = "Results"
+                value = "Something text"
+            }
+        }
+    }
+    loadTest {
+        attachment {
+            fallback = "Load tests successfully completed."
+            pretext = "Load tests successfully completed."
+            color = buildColor
+            field {
+                title = "Application"
+                value = project.name
+                shortValue = true
+            }
+            field {
+                title = "Version"
+                value = project.version
+                shortValue = true
+            }
+            field {
+                title = "Branch"
+                value = "$branch"
+                shortValue = true
+            }
+            field {
+                title = "Commit"
+                value = "$commit"
+                shortValue = true
+            }
+        }
+        attachment {
+            color = buildColor
+            field {
+                title = "Results"
+                value = "N / A"
+                shortValue = false
+            }
+        }
+    }
+//    authenticatedSmokeTest {
+//        attachment {
+//            fallback = "Authenticated smoke tests successfully completed."
+//            pretext = "Authenticated smoke tests successfully completed."
+//            color = buildColor
+//            field {
+//                title = "Application"
+//                value = project.name
+//                shortValue = true
+//            }
+//            field {
+//                title = "Version"
+//                value = project.version
+//                shortValue = true
+//            }
+//            field {
+//                title = "Branch"
+//                value = "$branch"
+//                shortValue = true
+//            }
+//            field {
+//                title = "Commit"
+//                value = "$commit"
+//                shortValue = true
+//            }
+//        }
+//        attachment {
+//            color = buildColor
+//            field {
+//                title = "Results"
+//                value = "N / A"
+//                shortValue = false
+//            }
+//        }
+//    }
+//	unauthenticatedSmokeTest {
+//		attachment {
+//			fallback = "Unauthenticated smoke tests successfully completed."
+//			pretext = "Unauthenticated smoke tests successfully completed."
+//			color = buildColor
+//			field {
+//				title = "Application"
+//				value = project.name
+//				shortValue = true
+//			}
+//			field {
+//				title = "Version"
+//				value = project.version
+//				shortValue = true
+//			}
+//			field {
+//				title = "Branch"
+//				value = "$branch"
+//				shortValue = true
+//			}
+//			field {
+//				title = "Commit"
+//				value = "$commit"
+//				shortValue = true
+//			}
+//		}
+//		attachment {
+//			color = buildColor
+//			field {
+//				title = "Results"
+//				value = "N / A"
+//				shortValue = false
+//			}
+//		}
+//	}
+//    validationSmokeTest {
+//        attachment {
+//            fallback = "Validation smoke tests successfully completed."
+//            pretext = "Validation smoke tests successfully completed."
+//            color = buildColor
+//            field {
+//                title = "Application"
+//                value = project.name
+//                shortValue = true
+//            }
+//            field {
+//                title = "Version"
+//                value = project.version
+//                shortValue = true
+//            }
+//            field {
+//                title = "Branch"
+//                value = "$branch"
+//                shortValue = true
+//            }
+//            field {
+//                title = "Commit"
+//                value = "$commit"
+//                shortValue = true
+//            }
+//        }
+//        attachment {
+//            color = buildColor
+//            field {
+//                title = "Results"
+//                value = "N / A"
+//                shortValue = false
+//            }
+//        }
+//    }
+    applicationBuildComplete {
+        attachment {
+            fallback = "$project.name build complete ..."
+            pretext = "$project.name build complete ..."
+            color = "warning"
+            field {
+                title = "Build Info"
+                value = "*Version*: $project.version"
+                shortValue = true
+            }
+            field {
+                title = "Git Info"
+                value = "*Branch*: $branch\n*Commit*: $commit"
+                shortValue = true
+            }
+        }
+    }
+//    applicationHealthCheck {
+//        verificationUrl = "http://localhost:7001/actuator/health"
+//        attachment {
+//            color = "danger"
+//            field {
+//                title = "Application Status: N / A"
+//                value = "N / A"
+//                shortValue = false
+//            }
+//        }
+//        attachment {
+//            color = "danger"
+//            field {
+//                title = "QA Status: N / A"
+//                value = "N / A"
+//                shortValue = false
+//            }
+//        }
+//    }
+//    applicationInfo {
+//        verificationUrl = "http://localhost:7001/actuator/info"
+//        attachment {
+//            color = "danger"
+//            field {
+//                title = "Application Info: N / A"
+//                value = "N / A"
+//                shortValue = false
+//            }
+//            field {
+//                title = "Build Info"
+//                value = "N / A"
+//                shortValue = true
+//            }
+//            field {
+//                title = "Git Info"
+//                value = "N / A"
+//                shortValue = true
+//            }
+//        }
+//    }
+//    externalHealthCheck {
+//
+//    }
+//    noVcsCredentials {
+//
+//    }
+//    qaReady {
+//
+//    }
+}

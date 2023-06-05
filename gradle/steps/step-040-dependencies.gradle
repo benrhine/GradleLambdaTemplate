@@ -1,0 +1,55 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Dependencies: Configuration for dependencyManagement and dependency blocks.
+ * - GLOBAL EXCLUSIONS ARE CONFIGURED IN - step-10-additional-config.gradle
+ * ------------------------------------------------------------------------------------------------------------------ */
+
+dependencies {
+    // -----------------------------------------------------------------------------------------------------------------
+    // Boeing / Jeppesen Built Dependencies:
+    // -----------------------------------------------------------------------------------------------------------------
+    // FILL IN HERE
+    // -----------------------------------------------------------------------------------------------------------------
+    // Aws:
+    // -----------------------------------------------------------------------------------------------------------------
+    implementation "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCore"
+    implementation "com.amazonaws:aws-lambda-java-events:$awsLambdaJavaEvents"
+    // -----------------------------------------------------------------------------------------------------------------
+    // Aws Database:
+    // -----------------------------------------------------------------------------------------------------------------
+    implementation "com.amazonaws:aws-java-sdk-dynamodb:$awsJavaSdkDynamoDb"
+    // ----------------------------------------------------------------------------------------------------------------
+    // Miscellaneous: Apache, Google, Hibernate Validator
+    // -----------------------------------------------------------------------------------------------------------------
+    implementation "com.google.code.gson:gson:$googleGson"
+    implementation "com.googlecode.json-simple:json-simple:$googleJsonSimple"
+    // -----------------------------------------------------------------------------------------------------------------
+    // Additional Quality Checks:
+    // Not turned this on yet
+    // https://www.baeldung.com/intro-to-findbugs
+    // https://medium.com/@raveensr/how-to-add-checkstyle-and-findbugs-plugins-in-a-gradle-based-project-51759aa843be
+    // -----------------------------------------------------------------------------------------------------------------
+    implementation "org.codehaus.mojo:findbugs-maven-plugin:$findbugsMaven"
+    // -----------------------------------------------------------------------------------------------------------------
+    // Testing:
+    // -----------------------------------------------------------------------------------------------------------------
+    testImplementation platform("org.junit:junit-bom:$junitBom")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation ("org.mockito:mockito-inline:+") {  // required for static mocks
+        exclude group: 'org.mockito', module: 'mockito-core'
+    }
+//    testImplementation ("com.github.tomakehurst:wiremock-jre8:${wiremockVersion}") {
+//        exclude group: 'ch.qos.logback', module: 'logback-classic'
+//        exclude group: 'com.fasterxml.jackson', module: 'jackson-bom'
+//        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+//        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-annotations'
+//        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+//    }
+//    // See https://junit-pioneer.org/docs/environment-variables/
+//    testImplementation 'org.junit-pioneer:junit-pioneer:1.7.1'
+    // The following two dependencies are necessary with the most recent version of mockito for some reason
+    // see https://howtodoinjava.com/mockito/plugin-mockmaker-error/
+    //// https://mvnrepository.com/artifact/net.bytebuddy/byte-buddy
+    //testImplementation "net.bytebuddy:byte-buddy:${byteBuddyVersion}"
+    // https://mvnrepository.com/artifact/net.bytebuddy/byte-buddy-agent
+    //testImplementation "net.bytebuddy:byte-buddy-agent:${byteBuddyVersion}"
+}

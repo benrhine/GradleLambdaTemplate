@@ -1,0 +1,155 @@
+{
+	"info": {
+		"_postman_id": "d712856a-3e75-4900-9189-46f68d86b4a4",
+		"name": "Serverless Example",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "237426"
+	},
+	"item": [
+		{
+			"name": "Save Person serverless http lambda",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n   \"id\":\"1\",\n   \"name\":\"Richard Roe\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://z1gie343i7.execute-api.us-east-2.amazonaws.com/dev/persons-http",
+					"protocol": "https",
+					"host": [
+						"z1gie343i7",
+						"execute-api",
+						"us-east-2",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"persons-http"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Person serverless http lambda",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "https://z1gie343i7.execute-api.us-east-2.amazonaws.com/dev/persons-http/1",
+					"protocol": "https",
+					"host": [
+						"z1gie343i7",
+						"execute-api",
+						"us-east-2",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"persons-http",
+						"1"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Person by query http lambda",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					},
+					{
+						"key": "Authorization",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n   \"id\":1,\n   \"name\":\"John Doe\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://z1gie343i7.execute-api.us-east-2.amazonaws.com/dev/persons-http?id=1",
+					"protocol": "https",
+					"host": [
+						"z1gie343i7",
+						"execute-api",
+						"us-east-2",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"dev",
+						"persons-http"
+					],
+					"query": [
+						{
+							"key": "id",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

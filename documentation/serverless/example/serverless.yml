@@ -1,0 +1,173 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+# This should match the application name specified in the settings.gradle
+service: boeing-gradle-lambda-template
+
+frameworkVersion: '3'
+
+custom:
+  personsTableName: 'Person'
+  #  personsTableName: 'java-persons-${self:provider.stage}'
+  stage: ${opt:stage, self:provider.stage}
+
+provider:
+  name: aws
+  runtime: java11
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-2'}
+#  apiGateway:
+#    #    disableDefaultEndpoint: true # this disables default endpoints for custom url
+#    apiKeys:
+#      - basic:
+#          - basicPlanKey
+#      - standard:
+#          - standardPlanKey
+#      - premium:
+#          - premiumPlanKey
+#    usagePlan:
+#      - basic:
+#          quota:
+#            limit: 5
+#            period: MONTH
+#          throttle:
+#            rateLimit: 5
+#            burstLimit: 20
+#      - standard:
+#          quota:
+#            limit: 10
+#            period: MONTH
+#          throttle:
+#            rateLimit: 5
+#            burstLimit: 20
+#      - premium:
+#          quota:
+#            limit: 50
+#            period: MONTH
+#          throttle:
+#            rateLimit: 10
+#            burstLimit: 25
+      # Will auto generate a key
+      # - myApiKey
+      # Will us the provided key
+      # - name: myCustomKey
+      #  value: bens-api-1-6145458725
+#  httpApi:
+#    authorizers:        # This sets up an authorizer that is availbe from here https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/manage
+#      auth0Authorizer:
+#        type: jwt
+#        identitySource: $request.header.Authorization
+#        issuerUrl: https://dev-YOUR-ISSUER.us.auth0.com/
+#        audience:
+#          - !GetAtt HttpApi.ApiEndpoint # get aws generated base url
+  endpointType: REGIONAL
+  timeout: 20
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["PersonsDynamoDBTable", "Arn" ] }
+  environment:
+    TABLE_NAME: ${self:custom.personsTableName}
+
+package:
+  artifact: 'build/libs/${self:service}-0.0.1-SNAPSHOT-all.jar'
+#  artifact: 'build/libs/${self:service}-${self:provider.stage}-all.jar'
+
+functions:
+#  listPersonsREST:
+#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
+#    events:
+#      - http:
+#          path: /persons-rest
+#          method: get
+#          private: true   # This makes the api require an apiKey
+  listPersonsHTTP:
+    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
+    events:
+      - httpApi:
+          path: /${self:custom.stage}/persons-http
+          method: get
+#          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
+#            name: auth0Authorizer
+#  getPersonREST:
+#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
+#    events:
+#      - http:
+#          path: /persons-rest/{id}
+#          method: get
+#          private: true   # This makes the api require an apiKey
+#    environment:
+#      TABLE_NAME: ${self:custom.personsTableName}
+  getPersonHTTP:
+    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
+    events:
+      - httpApi:
+          path: /${self:custom.stage}/persons-http/{id}
+          method: get
+#          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
+#            name: auth0Authorizer
+    environment:
+      TABLE_NAME: ${self:custom.personsTableName}
+#  createPersonREST:
+#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleRequest
+#    events:
+#      - http:
+#          path: /persons-rest
+#          method: put
+#          private: true   # This makes the api require an apiKey
+#    environment:
+#      TABLE_NAME: ${self:custom.personsTableName}
+  createPersonHTTP:
+    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.CreatePersonHandler::handleRequest
+    events:
+      - httpApi:
+          path: /${self:custom.stage}/persons-http
+          method: put
+#          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
+#            name: auth0Authorizer
+    environment:
+      TABLE_NAME: ${self:custom.personsTableName}
+#  deleteProduct:
+#    handler: com.serverless.DeleteProductHandler
+#    events:
+#      - http:
+#          path: /products/{id}
+#          method: delete
+
+resources:
+  Resources:
+    PersonsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      #DeletionPolicy: Retain  # makes sure it does not get deleted but will still fail when it attempts to recreate
+      Properties:
+        TableName: ${self:custom.personsTableName}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        #          - AttributeName: name
+        #            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        #          - AttributeName: name
+        #            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

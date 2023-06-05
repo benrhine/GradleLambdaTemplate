@@ -1,0 +1,546 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Additional Tasks:
+ * ------------------------------------------------------------------------------------------------------------------ */
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Zip Reports:
+ * ------------------------------------------------------------------------------------------------------------------ */
+//task("sqsSample") {
+//	exec {
+//		executable "zsh"
+//		args "-c", "aws --endpoint-url http://localhost:9324 sqs send-message --queue-url http://localhost:9324/queue/rule-notification-event --message-body file://src/main/resources/json/sqs/payload.json"
+//	}
+//}
+//
+//task("snsSample") {
+//	exec {
+//		executable "zsh"
+//		args "-c", "aws sns publish --endpoint-url http://localhost:9911 --topic-arn arn:aws:sns:us-east-1:XXXXXXXXXX:test1 --message \"Hello World...\""
+//	}
+//}
+/** --------------------------------------------------------------------------------------------------------------------
+ * printSourceSetInformation:
+ *
+ * List available sourceSets in the project (ie where the code is located)
+ * `./gradlew printSourceSetInformation`
+ * ------------------------------------------------------------------------------------------------------------------ */
+task printSourceSetInformation() {
+    description = 'List included source sets'
+    group = 'Informational'
+    doLast{
+        sourceSets.each { srcSet ->
+            println "["+srcSet.name+"]"
+            print "-->Source directories: "+srcSet.allJava.srcDirs+"\n"
+            print "-->Output directories: "+srcSet.output.classesDirs.files+"\n"
+            print "-->Compile classpath:\n"
+            print "-->CURRENTLY DISABLED\n"
+//            srcSet.compileClasspath.files.each {
+//                print "  "+it.path+"\n"
+//            }
+            println ""
+        }
+    }
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Zip Reports:
+ * ------------------------------------------------------------------------------------------------------------------ */
+task packageUnitReports(type: Zip) {
+    from "$buildDir/reports/jacoco/unitTestReports"
+    destinationDirectory = file("$buildDir")
+    archiveFileName = "unitJacoco.zip"
+}
+
+task packageIntReports(type: Zip) {
+    from "$buildDir/reports/jacoco/integrationTestReports"
+    destinationDirectory = file("$buildDir")
+    archiveFileName = "intJacoco.zip"
+}
+
+task packageUnauthenticatedLoadReports(type: Zip) {
+    from "$buildDir/reports/load/unauthenticated"
+    destinationDirectory = file("$buildDir")
+    archiveFileName = "unauthenticatedLoad.zip"
+}
+
+task packageValidationLoadReports(type: Zip) {
+    from "$buildDir/reports/load/validation"
+    destinationDirectory = file("$buildDir")
+    archiveFileName = "validationLoad.zip"
+}
+
+task packageAuthenticatedLoadReports(type: Zip) {
+    from "$buildDir/reports/load/authenticated"
+    destinationDirectory = file("$buildDir")
+    archiveFileName = "authenticatedLoad.zip"
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Easy Release Tagging: THESE MAY REQUIRE ADDITIONAL TWEAKING DEPENDING ON WHERE THEY ARE CONFIGURED
+ *
+ * ------------------------------------------------------------------------------------------------------------------ */
+task tagForQa() {
+    description = 'Sets release tag for QA'
+    group = 'Release'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        int build = 0
+
+        if (vcsBuildNum) {
+            build = Integer.parseInt(vcsBuildNum as String) + 1
+        }
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get the current branch the project is on
+        final String originalBranch = ext.branch
+        final String tag = "qa-$build"
+        final String message = "Tagging for qa release $build"
+        final String skipCiMsg = "[skip ci] Tagging for qa release | Current Tag ( $tag )"
+        // WARNING - THE SIMPLE COMMIT APPROACH HAS BEEN ABANDONED / PAUSED AS IT CAUSED ISSUES
+        // Make a simple commit so the branch can be pushed
+        // Note: Without this the branch CAN NOT be pushed
+//        project.file('CHANGELOG.md') << "$message"
+//        project.file('CHANGELOG.md') << '\n'
+//        // Add everything to git
+//        exec {
+//            commandLine 'git', 'add', 'CHANGELOG.md'
+//            standardOutput = stdout
+//        }
+//        // Commit the new branch so others can access it
+//        exec {
+//            commandLine 'git', 'commit', '-m', skipCiMsg
+//            standardOutput = stdout
+//        }
+//        // Push the commit - WILL SKIP THE CI PROCESS
+//        exec {
+//            commandLine 'git', 'push', 'origin', originalBranch
+//            standardOutput = stdout
+//        }
+        // Tag the given git branch with the tag for qa
+        exec {
+            commandLine 'git', 'tag', '-am', message, tag
+            standardOutput = stdout
+        }
+        // Push the new tag to the repo
+        exec {
+            commandLine 'git', 'push', 'origin', tag
+            standardOutput = stdout
+        }
+
+        final upperEnv       = env ? env.toUpperCase() : "N/A"
+        println "Current Env: $upperEnv"
+
+        if (!upperEnv.equalsIgnoreCase("N/A")) {
+            // https://api.slack.com/tutorials/tracks/posting-messages-with-curl
+            // https://api.slack.com/block-kit
+            exec {
+                commandLine 'sh', '-c', "curl" +
+                        " -H \"Content-type: application/json\"" +
+                        " -H \"Authorization: Bearer ${slackToken}\"" +
+                        " -X POST https://slack.com/api/chat.postMessage" +
+                        " --data '{" +
+                        "\"channel\":\"${slackNotificationMainChannel}\"," +
+                        "\"blocks\":" +
+                        "[" +
+                        "{" +
+                        "\"type\": \"header\"," +
+                        "\"text\": {" +
+                        "\"type\": \"plain_text\"," +
+                        "\"text\": \"Current Release to ${upperEnv} (QA)\"" +
+                        "}" +
+                        "}," +
+                        "{" +
+                        "\"type\": \"divider\"" +
+                        "}," +
+                        "{" +
+                        "\"type\":\"section\"," +
+                        "\"text\":{" +
+                        "\"type\":\"mrkdwn\"," +
+                        "\"text\":\"Tag: $tag is now building on ${upperEnv} (QA) for branch ${vcsBranch}\"" +
+                        "}" +
+                        "}," +
+                        "{" +
+                        "\"type\":\"section\"," +
+                        "\"text\":{" +
+                        "\"type\":\"mrkdwn\"," +
+                        "\"text\":\"Triggered by user: ${vcsUserUuid}\"" +
+                        "}" +
+                        "}," +
+                        "{" +
+                        "\"type\":\"section\"," +
+                        "\"text\":{" +
+                        "\"type\":\"mrkdwn\"," +
+                        "\"text\":\"See build $build\"" +
+                        "}," +
+                        "\"accessory\": {" +
+                        "\"type\": \"button\"," +
+                        "\"text\": {" +
+                        "\"type\": \"plain_text\"," +
+                        "\"text\": \"Click Me | $tag\"," +
+                        "\"emoji\": true" +
+                        "}," +
+                        "\"value\": \"$tag\"," +
+                        "\"url\": \"https://bitbucket.org/YOUR-COMPANY-AND-REPO-HERE/addon/pipelines/home#!/results/$build\"," +
+                        "\"action_id\": \"button-action\"" +
+                        "}" +
+                        "}" +
+                        "]}'"
+            }
+        } else {
+            println "A problem occurred alerting to slack!!!"
+        }
+    }
+}
+
+// - How to execute: ./gradlew tagQaComplete -Pargs="qa-XXXX"
+task tagQaComplete() {
+    description = 'Sets QA complete tag (This assumes QA has passed testing)'
+    group = 'Release'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get the current branch the project is on
+        final String originalBranch = ext.branch
+        // Get passed in argument(s) - SHOULD BE A SINGLE ARGUMENT
+        def args = null
+        if (project.hasProperty("args")) {
+            args = project.getProperty("args")
+        }
+        // If an arg is present check that the correct number of args were passed in and check out the given tag
+        // IMPORTANT - THIS WILL CHECK OUT A DIFFERENT GIT BRANCH
+        if (args) {
+            final splitSpace = args.split()
+            final splitComma = args.split(",")
+            if (splitSpace.size() == 1 && splitComma.size() == 1) {
+                exec {
+                    commandLine 'git', 'checkout', args
+                    standardOutput = stdout
+                }
+                // Construct the branch name and tag message
+                // IMPORTANT - MAKE SURE THE ITERATION, PATCH, AND RELEASE HAVE BEEN UPDATED IN GRADLE PROPERTIES
+                final String branch = "TESTING-COMPLETE-$args"
+                final String message = "Tagging QA complete for " + args
+                // Tag the given git branch with the tag for rgrs
+                exec {
+                    commandLine 'git', 'tag', '-am', message, branch
+                    standardOutput = stdout
+                }
+                // Push the new tag to the repo
+                exec {
+                    commandLine 'git', 'push', 'origin', branch
+                    standardOutput = stdout
+                }
+                // Switch back to the original branch
+                exec {
+                    commandLine 'git', 'checkout', originalBranch
+                    standardOutput = stdout
+                }
+            } else {
+                throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+            }
+        } else {
+            throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+        }
+    }
+}
+
+// - How to execute: ./gradlew tagForRgrs -Pargs="qa-XXXX"
+task tagForRgrs() {
+    description = 'Sets release tag for RGRS (This assumes QA has passed testing)'
+    group = 'Release'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get the current branch the project is on
+        final String originalBranch = this.getCurrentGitBranch()
+        // Get passed in argument(s) - SHOULD BE A SINGLE ARGUMENT
+        def args = null
+        if (project.hasProperty("args")) {
+            args = project.getProperty("args")
+        }
+        // If an arg is present check that the correct number of args were passed in and check out the given tag
+        // IMPORTANT - THIS WILL CHECK OUT A DIFFERENT GIT BRANCH
+        if (args) {
+            final splitSpace = args.split()
+            final splitComma = args.split(",")
+            if (splitSpace.size() == 1 && splitComma.size() == 1) {
+                exec {
+                    commandLine 'git', 'checkout', args
+                    standardOutput = stdout
+                }
+                // Construct the branch name and tag message
+                // IMPORTANT - MAKE SURE THE ITERATION, PATCH, AND RELEASE HAVE BEEN UPDATED IN GRADLE PROPERTIES
+                final String branch = "rgrs-$PiIteration-$PiPatch-$PiRelease"
+                final String message = "Tagging for rgrs release " + branch
+                // Tag the given git branch with the tag for rgrs
+                exec {
+                    commandLine 'git', 'tag', '-am', message, branch
+                    standardOutput = stdout
+                }
+                // Push the new tag to the repo
+                exec {
+                    commandLine 'git', 'push', 'origin', branch
+                    standardOutput = stdout
+                }
+                // Switch back to the original branch
+                exec {
+                    commandLine 'git', 'checkout', originalBranch
+                    standardOutput = stdout
+                }
+            } else {
+                throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+            }
+        } else {
+            throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+        }
+    }
+}
+
+task tagForRelease() {
+    description = 'Sets RELEASE tag (This assumes QA and REGRESSION has passed testing)'
+    group = 'Release'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get the current branch the project is on
+        final String originalBranch = ext.branch
+        // Get passed in argument(s) - SHOULD BE A SINGLE ARGUMENT
+        def args = null
+        if (project.hasProperty("args")) {
+            args = project.getProperty("args")
+        }
+        // If an arg is present check that the correct number of args were passed in and check out the given tag
+        // IMPORTANT - THIS WILL CHECK OUT A DIFFERENT GIT BRANCH
+        if (args) {
+            final splitSpace = args.split()
+            final splitComma = args.split(",")
+            if (splitSpace.size() == 1 && splitComma.size() == 1) {
+                exec {
+                    commandLine 'git', 'checkout', args
+                    standardOutput = stdout
+                }
+                // Construct the branch name and tag message
+                // IMPORTANT - MAKE SURE THE ITERATION, PATCH, AND RELEASE HAVE BEEN UPDATED IN GRADLE PROPERTIES
+                final String branch = "RELEASE-$piIteration-$piPatch-$piRelease"
+                final String message = "Tagging for release " + branch
+                // Tag the given git branch with the tag for rgrs
+                exec {
+                    commandLine 'git', 'tag', '-am', message, branch
+                    standardOutput = stdout
+                }
+                // Push the new tag to the repo
+                exec {
+                    commandLine 'git', 'push', 'origin', branch
+                    standardOutput = stdout
+                }
+                // Switch back to the original branch
+                exec {
+                    commandLine 'git', 'checkout', originalBranch
+                    standardOutput = stdout
+                }
+            } else {
+                throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+            }
+        } else {
+            throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+        }
+    }
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Easy Tag Cleanup:
+ * - How to execute: ./gradlew removeBranchTag -Pargs="qa-XXXX"
+ * ------------------------------------------------------------------------------------------------------------------ */
+task removeBranchTag() {
+    description = 'Removes a tag (Will remove the tag that is passed into the task)'
+    group = 'Release'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get passed in argument(s) - SHOULD BE A SINGLE ARGUMENT
+        def args = null
+        if (project.hasProperty("args")) {
+            args = project.getProperty("args")
+        }
+        // If an arg is present check that the correct number of args were passed in and check out the given tag
+        if (args) {
+            final splitSpace = args.split()
+            final splitComma = args.split(",")
+            if (splitSpace.size() == 1 && splitComma.size() == 1) {
+                // Remove the given tag from a remote branch
+                exec {
+                    commandLine 'git', 'push', '--delete', 'origin', args
+                    standardOutput = stdout
+                }
+                // Remove the given tag from your local git
+                exec {
+                    commandLine 'git', 'tag', '--delete', args
+                    standardOutput = stdout
+                }
+            } else {
+                throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+            }
+        } else {
+            throw new RuntimeException("Wrong number of arguments passed in - REQUIRES A SINGLE ARUGMENT")
+        }
+    }
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Easy Rgrs Fix Creation:
+ * ------------------------------------------------------------------------------------------------------------------ */
+task createIssueFixBranch() {
+    description = 'Creates a new branch for an issue fix'
+    group = 'Triage'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get passed in argument(s) - SHOULD BE TWO ARGUMENTS
+        def args = null
+        if (project.hasProperty("args")) {
+            args = project.getProperty("args")
+        }
+        // If an arg is present check that the correct number of args were passed in and check out the given tag
+        // IMPORTANT - THIS WILL CHECK OUT A DIFFERENT GIT BRANCH
+        if (args) {
+            final splitComma = args.split(",")
+            if (splitComma.size() == 2) {
+                final branchToFixTag = splitComma[0]
+                final jiraIssue = splitComma[1]
+                // If desired this could be extended to other envs
+                if (!branchToFixTag.contains("rgrs")) {
+                    throw new RuntimeException("Inbound tag is not for the expected fix environment")
+                }
+                // Build commit message
+                final String message = "[skip ci] Fix branch created for Issue $jiraIssue"
+                // Check out the existing tag that needs fixed
+                exec {
+                    commandLine 'git', 'checkout', branchToFixTag
+                    standardOutput = stdout
+                    // When this command completes the branch will be in a detached HEAD state
+                }
+                // Build a new branch name
+                final String newBranch = jiraIssue + "-FIX-" + branchToFixTag
+                // Create a new branch for the incoming fix
+                exec {
+                    commandLine 'git', 'checkout', '-b', newBranch
+                    standardOutput = stdout
+                }
+                // Make a simple commit so the branch can be pushed
+                // Note: Without this the branch CAN NOT be pushed
+                project.file('CHANGELOG.md') << "$jiraIssue: New Branch - $newBranch"
+                project.file('CHANGELOG.md') << '\n'
+                // Add everything to git
+                exec {
+                    commandLine 'git', 'add', 'CHANGELOG.md'
+                    standardOutput = stdout
+                }
+                // Commit the new branch so others can access it
+                exec {
+                    commandLine 'git', 'commit', '-m', message
+                    standardOutput = stdout
+                }
+                // Push the new branch to remote
+                exec {
+                    commandLine 'git', 'push', 'origin', newBranch
+                    standardOutput = stdout
+                }
+                // Ensure upstream branch is set to ensure we can pull
+                // Note: Without this it seems to complain for some reason
+                final String gitOption = "--set-upstream-to=origin/$newBranch"
+                exec {
+                    commandLine 'git', 'branch', gitOption
+                    standardOutput = stdout
+                }
+                // Update local branch and make sure everything is good to go
+                exec {
+                    commandLine 'git', 'pull'
+                    standardOutput = stdout
+                }
+            } else {
+                throw new RuntimeException("Wrong number of arguments passed in - REQUIRES TWO ARUGMENTS")
+            }
+        } else {
+            throw new RuntimeException("Wrong number of arguments passed in - REQUIRES TWO ARUGMENTS")
+        }
+    }
+}
+
+/** --------------------------------------------------------------------------------------------------------------------
+ * Easy Hot Fix Creation:
+ * ------------------------------------------------------------------------------------------------------------------ */
+task createHotFixBranch() {
+    description = 'Creates a new branch for a Hot Fix'
+    group = 'Triage'
+    doLast {// If not wrapped in a doLast gradle will fail to build
+        // Tell the task to write out to terminal
+        final stdout = new ByteArrayOutputStream()
+        // Get passed in argument(s) - SHOULD BE TWO ARGUMENTS
+        def args = null
+        if (project.hasProperty("args")) {
+            args = project.getProperty("args")
+        }
+        // If an arg is present check that the correct number of args were passed in and check out the given tag
+        // IMPORTANT - THIS WILL CHECK OUT A DIFFERENT GIT BRANCH
+        if (args) {
+            final splitComma = args.split(",")
+            if (splitComma.size() == 2) {
+                final branchToFixTag = splitComma[0]
+                final jiraIssue = splitComma[1]
+                // If desired this could be extended to other envs
+                if (!branchToFixTag.contains("RELEASE")) {
+                    throw new RuntimeException("Inbound tag is not for the expected fix environment")
+                }
+                // Build commit message
+                final String message = "[skip ci] Fix branch created for Issue $jiraIssue"
+                // Check out the existing tag that needs fixed
+                exec {
+                    commandLine 'git', 'checkout', branchToFixTag
+                    standardOutput = stdout
+                    // When this command completes the branch will be in a detached HEAD state
+                }
+                // Build a new branch name
+                final String newBranch = jiraIssue + "-HOT-FIX-" + branchToFixTag
+                // Create a new branch for the incoming fix
+                exec {
+                    commandLine 'git', 'checkout', '-b', newBranch
+                    standardOutput = stdout
+                }
+                // Make a simple commit so the branch can be pushed
+                // Note: Without this the branch CAN NOT be pushed
+                project.file('CHANGELOG.md') << "$jiraIssue: New Branch - $newBranch"
+                project.file('CHANGELOG.md') << '\n'
+                // Add everything to git
+                exec {
+                    commandLine 'git', 'add', 'CHANGELOG.md'
+                    standardOutput = stdout
+                }
+                // Commit the new branch so others can access it
+                exec {
+                    commandLine 'git', 'commit', '-m', message
+                    standardOutput = stdout
+                }
+                // Push the new branch to remote
+                exec {
+                    commandLine 'git', 'push', 'origin', newBranch
+                    standardOutput = stdout
+                }
+                // Ensure upstream branch is set to ensure we can pull
+                // Note: Without this it seems to complain for some reason
+                final String gitOption = "--set-upstream-to=origin/$newBranch"
+                exec {
+                    commandLine 'git', 'branch', gitOption
+                    standardOutput = stdout
+                }
+                // Update local branch and make sure everything is good to go
+                exec {
+                    commandLine 'git', 'pull'
+                    standardOutput = stdout
+                }
+            } else {
+                throw new RuntimeException("Wrong number of arguments passed in - REQUIRES TWO ARUGMENTS")
+            }
+        } else {
+            throw new RuntimeException("Wrong number of arguments passed in - REQUIRES TWO ARUGMENTS")
+        }
+    }
+}

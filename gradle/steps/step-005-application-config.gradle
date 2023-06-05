@@ -1,0 +1,84 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Application Config: Set application variables, mainClass, add info to actuator, bootRun config.
+ * ------------------------------------------------------------------------------------------------------------------ */
+String mainClassName, mainPkgName, mainPkgVersion
+
+if (allowEnvOverride) {
+    // Allow for these variables to be overridden by env variables if desired but have a fallback to a reasonable default
+    group                                   = System.env.TEMPLATE_GROUP_ID               ?: "$serviceGroupId" as Object
+    version                                 = System.env.TEMPLATE_SERVICE_VERSION        ?: "$serviceVersion" as Object
+    sourceCompatibility                     = System.env.TEMPLATE_SOURCE_COMPATIBILITY   ?: "$serviceSourceCompatibility" as Object
+    description                             = System.env.TEMPLATE_APP_NAME               ?: "$serviceApplicationName"
+    mainClassName                           = System.env.TEMPLATE_MAIN_CLASS_NAME        ?: "$serviceMainClassName"
+    mainPkgName                             = System.env.TEMPLATE_MAIN_PKG_NAME          ?: "$serviceMainPackageName"
+    mainPkgVersion                          = System.env.TEMPLATE_MAIN_PKG_VERSION       ?: "$serviceMainPackageVersion"
+} else {
+    group                                   = "$serviceGroupId" as Object
+    version                                 = "$serviceVersion" as Object
+    sourceCompatibility                     = "$serviceSourceCompatibility" as Object
+    description                             = "$serviceApplicationName"
+    mainClassName                           = "$serviceMainClassName"
+    mainPkgName                             = "$serviceMainPackageName"
+    mainPkgVersion                          = "$serviceMainPackageVersion"
+}
+
+// Ensure crucial build variables are set so we catch issues early
+assert group                                != null
+assert version                              != null
+assert sourceCompatibility                  != null
+assert description                          != null
+//assert mainClassName                        != null
+//assert mainPkgName                          != null
+//assert mainPkgVersion                       != null
+
+// Ensure a unique build is set to keep beanstalk from getting confused (ONLY RELEVANT FOR ACTUAL DEPLOYMENTS)
+if (vcsBuildNum) {
+    version = version + "." + vcsBuildNum
+} else {
+    version = version + "-SNAPSHOT"
+}
+println "\n**************************** APPLICATION DETAILS *****************************\n"
+
+if (env == null) {
+    println "Current environment: local-build"
+} else {
+    println "Current environment: $env"
+}
+
+println "Current application version: $version"
+//println "Current Main Class: $group.$mainPkgName.$serviceMainClassName"
+
+// Set application version properties - Prefer setting these in gradle.properties
+//ext['elasticsearch.version'] = '7.13.4'
+//ext['junit.version'] = '5.8.2'
+
+// Alert during the build if the Slack variables fail to retrieve.
+println "\n******************************** SLACK DETAILS ********************************\n"
+
+if (slackNotificationChannel == null) {
+    println "Slack Channel name not set - Slack alerts will fail!!!\n"
+}
+
+if (slackWebHook == null) {
+    println "Slack WebHook not set - Slack alerts will fail!!!\n"
+}
+
+// Warn slack alerting will fail if token is not present
+if (!slackToken) {
+    println "Can not upload reports to slack without token"
+} else {
+    println "*******************************************************************************"
+    println "*************************** Slack token is present ****************************"
+    println "*******************************************************************************"
+}
+// End Slack alert
+
+// Not sure these are required - the example build had these, in testing this does not seem to make a difference
+//ext{
+//    mainClassName = "Main"
+//}
+//shadowJar {
+//    manifest {
+//        attributes "Main-Class": mainClassName
+//    }
+//}

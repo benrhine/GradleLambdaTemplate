@@ -1,0 +1,16 @@
+/** --------------------------------------------------------------------------------------------------------------------
+ * Checkstyle:
+ * ------------------------------------------------------------------------------------------------------------------ */
+checkstyle {
+    toolVersion = "$checkstyleToolVersion"
+    ignoreFailures = checkstyleIgnoreFail
+    configFile = file("$projectDir/static-code-analysis/checkstyle/checkstyle.xml")
+    configProperties = [ "suppressionFile" : file("$projectDir/static-code-analysis/checkstyle/checkstyle-suppressions.xml")]
+}
+
+tasks.withType(Checkstyle) {
+    reports {
+        xml.required = checkstyleXml       // Default Value: false
+        html.required = checkstyleHtml     // Default Value: true
+    }
+}
