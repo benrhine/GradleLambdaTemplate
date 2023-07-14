@@ -3,20 +3,52 @@ run-as: root                                                # Specify what user 
 
 env:                                                        # Environment specific settings
   shell: /bin/bash                                          # Specify what shell to use when executing
-  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+  secrets-manager:
+    SLS_CERT_PASSWORD_SECRET_KEY: example_password
+
+cache:
+  paths:
+    - '/root/.gradle/**/*'
+    - '/root/.m2/**/*'
+    - '.gradle/**/*'
 
 phases:
-  #  install:
-  # Currently both java 17 and  node come installed in the image
-  #    runtime-versions:
-  #      java: corretto17
+  install:
+    # Currently both java 17 and  node come installed in the image
+    commands:
+      - echo "------------------------------------------------- Phase -------------------------------------------------"
+      - BUILD_START_TIME=$(($(date +%s%N)/1000000))
+      - |
+        if [ $CODEBUILD_BUILD_NUMBER ]; then
+          echo "Install Phase - CI Build $CODEBUILD_BUILD_NUMBER"
+          IS_CI_BUILD=true
+        else
+          echo "Install Phase - CI Build number is not set, something may be wrong"
+        fi
+      - echo "--------------------------------------------- Build Details ---------------------------------------------"
+      - echo "Current directory -" `pwd`
+      - echo "Current Java Version -" `java --version`
+      - echo "Current AWS Cli Version -" `aws --version`
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+      - echo "Current AWS Account - $AWS_ACCOUNT_ID"
+      - echo "Current AWS Region - $AWS_REGION"
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
   pre_build:
     commands:
-      - echo this is pre-build
-      - java --version
+    # Nothing to do here
   build:
     commands:
       - ./gradlew test
   post_build:
     commands:
-      - echo this is post-build
+      - BUILD_END_TIME=$(($(date +%s%N)/1000000))
+      - echo "Unit testing complete ... | Runtime - $((BUILD_END_TIME-BUILD_START_TIME)) ms"
+reports:
+  unit-reports:
+    files:
+      - "build/test-results/test/*.xml"
+    file-format: "JUNITXML"
+  jacoco-report:
+    files:
+      - 'build/reports/jacoco/unitTestReports/unitTestReports.xml'
+    file-format: 'JACOCOXML'
