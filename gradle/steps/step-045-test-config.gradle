@@ -8,7 +8,7 @@ import static java.lang.Integer.parseInt
 import groovy.time.TimeCategory
 
 /** --------------------------------------------------------------------------------------------------------------------
- * Test Configuration
+ * Test Logging Configuration:
  *  ----------------------------------------------------------------------------------------------------------------- */
 testlogger {
     theme 'mocha'
@@ -23,7 +23,7 @@ testlogger {
     showSkipped true
     showFailed true
     showOnlySlow false
-    showStandardStreams parseBoolean("$testShowStandardStreams")
+    showStandardStreams false
     showPassedStandardStreams true
     showSkippedStandardStreams true
     showFailedStandardStreams true
@@ -31,57 +31,216 @@ testlogger {
 }
 
 /** --------------------------------------------------------------------------------------------------------------------
- * Task: Unit Tests - Execute application unit tests (This test set should be validating semi-atomic increments of code)
+ * Test Suites Configuration: https://docs.gradle.org/current/userguide/jvm_test_suite_plugin.html
+ * Configuring tests this way grants significantly more flexibility and ensures that each test set is fully independent
+ * of any other test set. This native gradle method also allowed for the removal of two plugins.
+ * - https://blog.gradle.org/introducing-test-suites
  *  ----------------------------------------------------------------------------------------------------------------- */
-test { testTask ->
-    maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))           // Set max threads to speed up tests
-    reports.html.required = htmlReportsEnabled                                      // Configured in gradle.properties
-//    ignoreFailures = true
+testing {
+    suites {
+        configureEach {
+            useJUnitJupiter()
+            dependencies {
+                implementation project()
+                implementation "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCore"
+                implementation "com.amazonaws:aws-lambda-java-events:$awsLambdaJavaEvents"
+                implementation "com.amazonaws:aws-java-sdk-s3:$awsJavaSdk"  // this is responsible for 2+ MB of deployed jar size
+                implementation "org.aspectj:aspectjrt:$aspectJrt"
+                implementation "com.google.code.gson:gson:$googleGson"
+                implementation ("com.googlecode.json-simple:json-simple:$googleJsonSimple") {
+                    exclude group: 'junit', module: 'junit'
+                }
 
-    retry {
-        maxRetries = 2
-        maxFailures = 20
-        failOnPassedAfterRetry = true
-    }
+                implementation platform("org.junit:junit-bom:$junitBom")
+                implementation "org.junit.jupiter:junit-jupiter"
+                implementation "org.mockito:mockito-junit-jupiter:$junitMockito"
+                implementation "org.junit-pioneer:junit-pioneer:$junitPioneer"
 
-    useJUnitPlatform {
-        if (!parseBoolean("$testAllEnabled")) {
-            // To run all available tests with ./gradlew clean test set `testAllEnabled` in gradle.properties to true
-            excludeTags "int", "slow", "thin", "load"
+                implementation ("org.mockito:mockito-inline:+") {  // required for static mocks
+                    exclude group: 'org.mockito', module: 'mockito-core'
+                }
+                implementation "org.apache.httpcomponents:httpclient:$apacheHttpClient4"
+                implementation "com.squareup.okhttp3:okhttp:$okHttp3"
+                implementation "io.findify:s3mock_2.13:$s3Mock"
+            }
+        }
+        /** ------------------------------------------------------------------------------------------------------------
+         * Task: Unit Tests - Execute application unit tests (This test set should be validating semi-atomic increments
+         * of code)
+         *  --------------------------------------------------------------------------------------------------------- */
+        test {
+            testType = TestSuiteType.UNIT_TEST
+            targets {
+                all {
+                    testTask.configure {
+                        maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))           // Set max threads to speed up tests
+                        reports.html.required = htmlReportsEnabled                                      // Configured in gradle.properties
+                        //    ignoreFailures = true
+
+                        retry {
+                            maxRetries = 2
+                            maxFailures = 20
+                            failOnPassedAfterRetry = true
+                        }
+
+                        jacoco {
+                            enabled = jacocoEnabled                                         // Configured in gradle.properties
+                        }
+                        finalizedBy unitTestReports                                         // instructs the tests to finish by generating a coverage report
+
+                        afterSuite { desc, result ->
+                            project.buildColor = result.failedTestCount == 0 ? "good" : "danger"
+
+                            if (desc.parent) {
+                                return
+                            } // Only summarize results for whole modules
+
+                            final String summary = "${result.resultType} " +
+                                    "(" +
+                                    "${result.testCount} tests, " +
+                                    "${result.successfulTestCount} successes, " +
+                                    "${result.failedTestCount} failures, " +
+                                    "${result.skippedTestCount} skipped" +
+                                    ") " +
+                                    "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
+                                    "\n"
+
+                            project.testResults = []
+                            // Add reports in `testsUnitResults`, keep failed suites at the end
+                            if (result.resultType == TestResult.ResultType.SUCCESS) {
+                                project.testResults.add(0, summary)
+                            } else {
+                                project.testResults += summary
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        /** ------------------------------------------------------------------------------------------------------------
+         * Task: Integration Tests - Executes "live" tests against real resources.
+         *  --------------------------------------------------------------------------------------------------------- */
+        integrationTest(JvmTestSuite) {
+            testType = TestSuiteType.INTEGRATION_TEST
+            sources {
+                java {
+                    srcDirs = ['src/integration/java']
+                }
+                resources {
+                    srcDirs = ['src/integration/resources']
+                }
+            }
+
+            targets {
+                all {
+                    testTask.configure {
+                        maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))   // Set max threads to speed up tests
+                        reports.html.required = htmlReportsEnabled                              // Configured in gradle.properties
+                        description = 'Runs integration tests'
+                        group = 'verification'
+                        shouldRunAfter(test)
+
+                        retry {
+                            maxRetries = 2
+                            maxFailures = 20
+                            failOnPassedAfterRetry = true
+                        }
+
+                        jacoco {
+                            enabled = jacocoEnabled                                         // Configured in gradle.properties
+                        }
+                        finalizedBy integrationTestReports                                  // instructs the tests to finish by generating a coverage report
+
+                        afterSuite { desc, result ->
+                            buildColor = result.failedTestCount == 0 ? "good" : "danger"
+
+                            if (desc.parent) {
+                                return
+                            } // Only summarize results for whole modules
+
+                            final String summary = "${result.resultType} " +
+                                    "(" +
+                                    "${result.testCount} tests, " +
+                                    "${result.successfulTestCount} successes, " +
+                                    "${result.failedTestCount} failures, " +
+                                    "${result.skippedTestCount} skipped" +
+                                    ") " +
+                                    "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
+                                    "\n"
+
+                            project.testResults = []
+                            // Add reports in `testsIntResults`, keep failed suites at the end
+                            if (result.resultType == TestResult.ResultType.SUCCESS) {
+                                rootProject.testResults.add(0, summary)
+                            } else {
+                                rootProject.testResults += summary
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        apiSmokeTest(JvmTestSuite) {
+            testType = TestSuiteType.FUNCTIONAL_TEST
+            sources {
+                java {
+                    srcDirs = ['src/api/java']
+                }
+                resources {
+                    srcDirs = ['src/api/resources']
+                }
+            }
+
+            targets {
+                all {
+                    testTask.configure {
+                        maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))   // Set max threads to speed up tests
+                        reports.html.required = htmlReportsEnabled                              // Configured in gradle.properties
+                        description = 'Runs api/smoke tests'
+                        group = 'verification'
+                        shouldRunAfter(test)
+
+                        retry {
+                            maxRetries = 2
+                            maxFailures = 20
+                            failOnPassedAfterRetry = true
+                        }
+
+                        jacoco {
+                            enabled = jacocoEnabled                                         // Configured in gradle.properties
+                        }
+                        finalizedBy integrationTestReports                                  // instructs the tests to finish by generating a coverage report
+
+                        afterSuite { desc, result ->
+                            buildColor = result.failedTestCount == 0 ? "good" : "danger"
+
+                            if (desc.parent) {
+                                return
+                            } // Only summarize results for whole modules
+
+                            final String summary = "${result.resultType} " +
+                                    "(" +
+                                    "${result.testCount} tests, " +
+                                    "${result.successfulTestCount} successes, " +
+                                    "${result.failedTestCount} failures, " +
+                                    "${result.skippedTestCount} skipped" +
+                                    ") " +
+                                    "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
+                                    "\n"
+
+                            project.testResults = []
+                            // Add reports in `testsIntResults`, keep failed suites at the end
+                            if (result.resultType == TestResult.ResultType.SUCCESS) {
+                                rootProject.testResults.add(0, summary)
+                            } else {
+                                rootProject.testResults += summary
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-
-    jacoco {
-        enabled = jacocoEnabled                                         // Configured in gradle.properties
-    }
-    finalizedBy unitTestReports                                         // instructs the tests to finish by generating a coverage report
-
-    afterSuite { desc, result ->
-        project.buildColor = result.failedTestCount == 0 ? "good" : "danger"
-
-        if (desc.parent) {
-            return
-        } // Only summarize results for whole modules
-
-        final String summary = "${result.resultType} " +
-                "(" +
-                "${result.testCount} tests, " +
-                "${result.successfulTestCount} successes, " +
-                "${result.failedTestCount} failures, " +
-                "${result.skippedTestCount} skipped" +
-                ") " +
-                "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
-                "\n"
-
-        project.testResults = []
-        // Add reports in `testsUnitResults`, keep failed suites at the end
-        if (result.resultType == TestResult.ResultType.SUCCESS) {
-            project.testResults.add(0, summary)
-        } else {
-            project.testResults += summary
-        }
-    }
-
 }
 
 test.finalizedBy combineJaCoCoReports                   // Combine all present JaCoCo reports (exec files) into one
@@ -97,59 +256,9 @@ if (jacocoEnabled) {
     check.dependsOn jacocoTestCoverageVerification      // Ensure code coverage is enforced when ./gradlew build is executed
 }
 
-/** --------------------------------------------------------------------------------------------------------------------
- * Task: Integration Tests - Executes "live" tests against real resources.
- *  ----------------------------------------------------------------------------------------------------------------- */
-task integrationTest(type: Test) {
-    maxParallelForks ((env == "LOCAL") ? 5 : parseInt("$intParallelism"))   // Set max threads to speed up tests
-    reports.html.required = htmlReportsEnabled                              // Configured in gradle.properties
-    description = 'Runs integration tests'
-    group = 'verification'
-
-    retry {
-        maxRetries = 2
-        maxFailures = 20
-        failOnPassedAfterRetry = true
-    }
-
-    useJUnitPlatform {
-        includeTags 'int'
-    }
-
-    jacoco {
-        enabled = jacocoEnabled                                         // Configured in gradle.properties
-    }
-    finalizedBy integrationTestReports                                  // instructs the tests to finish by generating a coverage report
-
-    afterSuite { desc, result ->
-        buildColor = result.failedTestCount == 0 ? "good" : "danger"
-
-        if (desc.parent) {
-            return
-        } // Only summarize results for whole modules
-
-        final String summary = "${result.resultType} " +
-                "(" +
-                "${result.testCount} tests, " +
-                "${result.successfulTestCount} successes, " +
-                "${result.failedTestCount} failures, " +
-                "${result.skippedTestCount} skipped" +
-                ") " +
-                "in ${TimeCategory.minus(new Date(result.endTime), new Date(result.startTime))}" +
-                "\n"
-
-        project.testResults = []
-        // Add reports in `testsIntResults`, keep failed suites at the end
-        if (result.resultType == TestResult.ResultType.SUCCESS) {
-            rootProject.testResults.add(0, summary)
-        } else {
-            rootProject.testResults += summary
-        }
-    }
-}
-
 //integrationTest.finalizedBy combineJaCoCoReports                   // Combine all present JaCoCo reports (exec files) into one
 //integrationTest.finalizedBy sendIntTestAlert
 //sendIntTestAlert.finalizedBy sendIntTestResults
+
 
 
