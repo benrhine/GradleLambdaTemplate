@@ -3,13 +3,20 @@ run-as: root                                                # Specify what user 
 
 env:                                                        # Environment specific settings
   shell: /bin/bash                                          # Specify what shell to use when executing
-  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+#  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
   variables:
     STAGE_NAME: dev
+    EXTERNAL_ROLE_NAME: sls-domain-admin-role
   #  secrets-manager:
   #    key: secret-id:json-key:version-stage:version-id
 
   # THIS STEP NEEDS A WAY TO GET THE CREDENTIALS TO COMPLETE THE DEPLOYMENT
+
+cache:
+  paths:
+    - '/root/.gradle/**/*'
+    - '/root/.m2/**/*'
+    - '.gradle/**/*'
 
 phases:
   install:
@@ -18,16 +25,42 @@ phases:
     #      java: corretto17
     #      nodejs: 18
     commands:
+      - echo "------------------------------------------------- Phase -------------------------------------------------"
+      - BUILD_START_TIME=$(($(date +%s%N)/1000000))
+      - |
+        if [ $CODEBUILD_BUILD_NUMBER ]; then
+          echo "Install Phase - CI Build $CODEBUILD_BUILD_NUMBER"
+          IS_CI_BUILD=true
+        else
+          echo "Install Phase - CI Build number is not set, something may be wrong"
+        fi
+      - echo "Setting up Serverless Framework"
       - npm install -g serverless
-      - npm install -g aws-sso-credentials-getter
-  pre_build:
+      - echo "--------------------------------------------- Build Details ---------------------------------------------"
+      - echo "Current directory -" `pwd`
+      - echo "Current Java Version -" `java --version`
+      - echo "Current AWS Cli Version -" `aws --version`
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+      - echo "Current AWS Account - $AWS_ACCOUNT_ID"
+      - echo "Current AWS Region - $AWS_REGION"
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
+      - EXTERNAL_ROLE_ARN="arn:aws:iam::$AWS_ACCOUNT_ID:role/$EXTERNAL_ROLE_NAME"
+      - echo "--------------------------- Generate Credentials for $EXTERNAL_ROLE_ARN ---------------------------------"
+      - CREDENTIALS=$(aws sts assume-role --role-arn $EXTERNAL_ROLE_ARN --role-session-name codebuild-deploy-use1 --duration-seconds 3600)
+      - export AWS_ACCESS_KEY_ID="$(echo ${CREDENTIALS} | jq -r '.Credentials.AccessKeyId')"
+      - export AWS_SECRET_ACCESS_KEY="$(echo ${CREDENTIALS} | jq -r '.Credentials.SecretAccessKey')"
+      - export AWS_SESSION_TOKEN="$(echo ${CREDENTIALS} | jq -r '.Credentials.SessionToken')"
+      - export AWS_EXPIRATION=$(echo ${CREDENTIALS} | jq -r '.Credentials.Expiration')
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
+  pre_build: # Build the artifact
     commands:
-      - echo this is pre-build
-  build:
+      - echo `pwd`
+      - ./gradlew shadowJar
+  build: # Deploy the artifact - want to add --aws-s3-accelerate but this gives errors
     commands:
-      - ./gradlew shadow
-  post_build:
+      - echo "Deploying to stage - ${STAGE_NAME}"
+      - serverless deploy --stage ${STAGE_NAME} --verbose
+  post_build: # Inform that the build is complete
     commands:
-      - echo this is post-build
-      - serverless deploy --stage ${STAGE_NAME}
-      - echo Build is complete
+      - BUILD_END_TIME=$(($(date +%s%N)/1000000))
+      - echo "Build complete ... | Runtime - $((BUILD_END_TIME-BUILD_START_TIME)) ms"
