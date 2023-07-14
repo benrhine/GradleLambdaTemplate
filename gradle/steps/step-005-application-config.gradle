@@ -7,7 +7,7 @@ if (allowEnvOverride) {
     // Allow for these variables to be overridden by env variables if desired but have a fallback to a reasonable default
     group                                   = System.env.TEMPLATE_GROUP_ID               ?: "$serviceGroupId" as Object
     version                                 = System.env.TEMPLATE_SERVICE_VERSION        ?: "$serviceVersion" as Object
-    sourceCompatibility                     = System.env.TEMPLATE_SOURCE_COMPATIBILITY   ?: "$serviceSourceCompatibility" as Object
+    //sourceCompatibility                     = System.env.TEMPLATE_SOURCE_COMPATIBILITY   ?: "$serviceSourceCompatibility" as Object
     description                             = System.env.TEMPLATE_APP_NAME               ?: "$serviceApplicationName"
     mainClassName                           = System.env.TEMPLATE_MAIN_CLASS_NAME        ?: "$serviceMainClassName"
     mainPkgName                             = System.env.TEMPLATE_MAIN_PKG_NAME          ?: "$serviceMainPackageName"
@@ -15,7 +15,7 @@ if (allowEnvOverride) {
 } else {
     group                                   = "$serviceGroupId" as Object
     version                                 = "$serviceVersion" as Object
-    sourceCompatibility                     = "$serviceSourceCompatibility" as Object
+   // sourceCompatibility                     = "$serviceSourceCompatibility" as Object
     description                             = "$serviceApplicationName"
     mainClassName                           = "$serviceMainClassName"
     mainPkgName                             = "$serviceMainPackageName"
@@ -25,7 +25,7 @@ if (allowEnvOverride) {
 // Ensure crucial build variables are set so we catch issues early
 assert group                                != null
 assert version                              != null
-assert sourceCompatibility                  != null
+//assert sourceCompatibility                  != null
 assert description                          != null
 //assert mainClassName                        != null
 //assert mainPkgName                          != null
@@ -80,5 +80,17 @@ if (!slackToken) {
 //shadowJar {
 //    manifest {
 //        attributes "Main-Class": mainClassName
+//    }
+//}
+//shadowJar {
+//    exclude "**/Log4j2Plugins.dat"
+//}
+
+// If you need to enable Xlint
+//allprojects {
+//    gradle.projectsEvaluated {
+//        tasks.withType(JavaCompile) {
+//            options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+//        }
 //    }
 //}
