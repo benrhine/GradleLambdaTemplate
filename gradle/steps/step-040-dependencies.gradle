@@ -5,23 +5,44 @@
 
 dependencies {
     // -----------------------------------------------------------------------------------------------------------------
-    // Boeing / Jeppesen Built Dependencies:
+    // Personal Dependencies:
     // -----------------------------------------------------------------------------------------------------------------
     // FILL IN HERE
     // -----------------------------------------------------------------------------------------------------------------
     // Aws:
     // -----------------------------------------------------------------------------------------------------------------
     implementation "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCore"
-    implementation "com.amazonaws:aws-lambda-java-events:$awsLambdaJavaEvents"
+    implementation ("com.amazonaws:aws-lambda-java-events:$awsLambdaJavaEvents") {
+        exclude group: 'joda-time', module: 'joda-time'
+    }
+    implementation "com.amazonaws:aws-java-sdk-s3:$awsJavaSdk"  // this is responsible for 2+ MB of deployed jar size
+    implementation "com.amazonaws:aws-java-sdk-secretsmanager:$awsJavaSdk"
+    implementation 'com.amazonaws.secretsmanager:aws-secretsmanager-caching-java:1.0.2'
+
+    implementation "org.aspectj:aspectjrt:$aspectJrt"
+    aspect "software.amazon.lambda:powertools-logging:$awsPowerTools"
+    aspect "software.amazon.lambda:powertools-metrics:$awsPowerTools"
+    aspect "software.amazon.lambda:powertools-tracing:$awsPowerTools"
     // -----------------------------------------------------------------------------------------------------------------
     // Aws Database:
     // -----------------------------------------------------------------------------------------------------------------
-    implementation "com.amazonaws:aws-java-sdk-dynamodb:$awsJavaSdkDynamoDb"
+    implementation ("com.amazonaws:aws-java-sdk-dynamodb:$awsJavaSdkDynamoDb") {
+        exclude group: 'junit', module: 'junit'
+    }
+    // -----------------------------------------------------------------------------------------------------------------
+    // Apache:
+    // -----------------------------------------------------------------------------------------------------------------
+    implementation ("org.apache.httpcomponents.client5:httpclient5:$apacheHttpClient5") {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    implementation "commons-codec:commons-codec:$apacheCommonCodec"
     // ----------------------------------------------------------------------------------------------------------------
     // Miscellaneous: Apache, Google, Hibernate Validator
     // -----------------------------------------------------------------------------------------------------------------
     implementation "com.google.code.gson:gson:$googleGson"
-    implementation "com.googlecode.json-simple:json-simple:$googleJsonSimple"
+    implementation ("com.googlecode.json-simple:json-simple:$googleJsonSimple") {
+        exclude group: 'junit', module: 'junit'
+    }
     // -----------------------------------------------------------------------------------------------------------------
     // Additional Quality Checks:
     // Not turned this on yet
@@ -30,13 +51,14 @@ dependencies {
     // -----------------------------------------------------------------------------------------------------------------
     implementation "org.codehaus.mojo:findbugs-maven-plugin:$findbugsMaven"
     // -----------------------------------------------------------------------------------------------------------------
-    // Testing:
+    // Testing: Testing dependencies are now managed directly from test config.
+    // See - step-045-test-config.gradle
     // -----------------------------------------------------------------------------------------------------------------
-    testImplementation platform("org.junit:junit-bom:$junitBom")
-    testImplementation "org.junit.jupiter:junit-jupiter"
-    testImplementation ("org.mockito:mockito-inline:+") {  // required for static mocks
-        exclude group: 'org.mockito', module: 'mockito-core'
-    }
+    // testImplementation platform("org.junit:junit-bom:$junitBom")
+    // testImplementation "org.junit.jupiter:junit-jupiter"
+    // testImplementation ("org.mockito:mockito-inline:+") {  // required for static mocks
+    //     exclude group: 'org.mockito', module: 'mockito-core'
+    // }
 //    testImplementation ("com.github.tomakehurst:wiremock-jre8:${wiremockVersion}") {
 //        exclude group: 'ch.qos.logback', module: 'logback-classic'
 //        exclude group: 'com.fasterxml.jackson', module: 'jackson-bom'
