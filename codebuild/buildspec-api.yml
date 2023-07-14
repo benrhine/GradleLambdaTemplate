@@ -1,0 +1,64 @@
+version: 0.2                                                # Specify aws build system version
+run-as: root                                                # Specify what user to run the build as
+
+env:                                                        # Environment specific settings
+  shell: /bin/bash                                          # Specify what shell to use when executing
+  variables:
+    EXTERNAL_ROLE_NAME: sls-domain-admin-role
+    CLIENT_ID: ddsc_np
+    CLIENT_SCOPE: https://api.dev.eddpublisher.bgw1.digitalaviationservices.com/read
+
+cache:
+  paths:
+    - '/root/.gradle/**/*'
+    - '/root/.m2/**/*'
+    - '.gradle/**/*'
+
+phases:
+  install:
+    # Currently both java 17 and  node come installed in the image
+    commands:
+      - echo "------------------------------------------------- Phase -------------------------------------------------"
+      - BUILD_START_TIME=$(($(date +%s%N)/1000000))
+      - |
+        if [ $CODEBUILD_BUILD_NUMBER ]; then
+          echo "Install Phase - CI Build $CODEBUILD_BUILD_NUMBER"
+          IS_CI_BUILD=true
+        else
+          echo "Install Phase - CI Build number is not set, something may be wrong"
+        fi
+      - echo "--------------------------------------------- Build Details ---------------------------------------------"
+      - echo "Current directory -" `pwd`
+      - echo "Current Java Version -" `java --version`
+      - echo "Current AWS Cli Version -" `aws --version`
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+      - echo "Current AWS Account - $AWS_ACCOUNT_ID"
+      - echo "Current AWS Region - $AWS_REGION"
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
+      - EXTERNAL_ROLE_ARN="arn:aws:iam::$AWS_ACCOUNT_ID:role/$EXTERNAL_ROLE_NAME"
+      - echo "--------------------------- Generate Credentials for $EXTERNAL_ROLE_ARN ---------------------------------"
+      - CREDENTIALS=$(aws sts assume-role --role-arn $EXTERNAL_ROLE_ARN --role-session-name codebuild-deploy-use1 --duration-seconds 3600)
+      - export AWS_ACCESS_KEY_ID="$(echo ${CREDENTIALS} | jq -r '.Credentials.AccessKeyId')"
+      - export AWS_SECRET_ACCESS_KEY="$(echo ${CREDENTIALS} | jq -r '.Credentials.SecretAccessKey')"
+      - export AWS_SESSION_TOKEN="$(echo ${CREDENTIALS} | jq -r '.Credentials.SessionToken')"
+      - export AWS_EXPIRATION=$(echo ${CREDENTIALS} | jq -r '.Credentials.Expiration')
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
+      - echo "------------------------------------------ Get API Gateway URL ------------------------------------------"
+      - API_GATEWAY_URL=`aws cloudformation describe-stacks --stack-name ltr-service-dev --query "Stacks[0].Outputs[3].{OutputValueValue:OutputValue}" --output text`
+      - echo "API Gateway URL:" ${API_GATEWAY_URL}
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
+  pre_build:
+    commands:
+      # Nothing to do here
+  build:
+    commands:
+      - ./gradlew apiSmokeTest
+  post_build:
+    commands:
+      - BUILD_END_TIME=$(($(date +%s%N)/1000000))
+      - echo "API / Smoke testing complete ... | Runtime - $((BUILD_END_TIME-BUILD_START_TIME)) ms"
+reports:
+  api-smoke-reports:
+    files:
+      - "build/test-results/test/*.xml"
+    file-format: "JUNITXML"
