@@ -24,9 +24,9 @@
 ########################################################################################################################
 custom:                                                 # Set custom options / variables for serverless
   serverlessPrefix: 'sls'                               # Short name for serverless
-  appShortName: bglt                                    # Short app name to prefix all policies with the application specific name
-  rolePrefix: Bglt                                      # Prefix role(s) with application specific name
-  repoName: boeing-gradle-lambda-template               # The repository name that this acts upon
+  appShortName: glt                                     # Short app name to prefix all policies with the application specific name
+  rolePrefix: Glt                                       # Prefix role(s) with application specific name
+  repoName: gradle-lambda-template                      # The repository name that this acts upon
   deployBucketName: sls-regional-domain-deploy          # Bucket which contains all deployment artifacts
   adminRoleName: sls-domain-admin-role                  # Name of role to assume - created by serverless domain deploy
   logRetention: 30                                      # How many days to keep logs
