@@ -1,0 +1,48 @@
+version: 0.2                                                # Specify aws build system version
+run-as: root                                                # Specify what user to run the build as
+
+env:                                                        # Environment specific settings
+  shell: /bin/bash                                          # Specify what shell to use when executing
+
+cache:
+  paths:
+    - '/root/.gradle/**/*'
+    - '/root/.m2/**/*'
+    - '.gradle/**/*'
+
+phases:
+  install:
+    # Currently both java 17 and  node come installed in the image
+    commands:
+      - echo "------------------------------------------------- Phase -------------------------------------------------"
+      - BUILD_START_TIME=$(($(date +%s%N)/1000000))
+      - |
+        if [ $CODEBUILD_BUILD_NUMBER ]; then
+          echo "Install Phase - CI Build $CODEBUILD_BUILD_NUMBER"
+          IS_CI_BUILD=true
+        else
+          echo "Install Phase - CI Build number is not set, something may be wrong"
+        fi
+      - echo "--------------------------------------------- Build Details ---------------------------------------------"
+      - echo "Current directory -" `pwd`
+      - echo "Current Java Version -" `java --version`
+      - echo "Current AWS Cli Version -" `aws --version`
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+      - echo "Current AWS Account - $AWS_ACCOUNT_ID"
+      - echo "Current AWS Region - $AWS_REGION"
+      - echo "----------------------------------------------- Complete ------------------------------------------------"
+  pre_build:
+    commands:
+      # Nothing to do here
+  build:
+    commands:
+      # This only runs PMD on the primary source (ie it does not check test sets)
+      - ./gradlew pmdMain
+  post_build:
+    commands:
+      - BUILD_END_TIME=$(($(date +%s%N)/1000000))
+      - echo "PMD check complete ... | Runtime - $((BUILD_END_TIME-BUILD_START_TIME)) ms"
+#reports: # Aws does not know how to read this report
+#  checkstyle-report:
+#    files:
+#      - 'build/reports/pmd/main.html'
