@@ -16,6 +16,7 @@ plugins {
     id "org.sonarqube"                                      version "$sonarQubePlugin"
     id "com.benrhine.slack-alerts-groovy"                   version "0.0.1"                             // https://plugins.gradle.org/plugin/com.benrhine.slack-alerts-groovy
     id "org.gradle.test-retry"                              version "1.5.3"                             // https://plugins.gradle.org/plugin/org.gradle.test-retry
+    id "io.freefair.aspectj.post-compile-weaving" version "6.3.0"
 }
 
 /** --------------------------------------------------------------------------------------------------------------------

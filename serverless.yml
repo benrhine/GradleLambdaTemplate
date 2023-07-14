@@ -13,7 +13,7 @@
 
 frameworkVersion: '3'                                   # Set what version of serverless is being used
 
-service: boeing-gradle-lambda-template                  # This should match the application name specified in the settings.gradle
+service: gradle-lambda-template                  # This should match the application name specified in the settings.gradle
 #plugins:                                                # Specify any additional plugins for serverless - be aware that these can increase cold start time
 #  # Ref: https://www.serverless.com/plugins/serverless-offline
 #  - serverless-offline                                  # Helper plugin that allows for offline testing of lambdas - THIS ONLY SUPPORTS Node.js, Python, Ruby and Go λ runtimes.
@@ -89,14 +89,14 @@ package:                                                # Specify the artifact t
 
 functions:
 #  listPersonsREST:
-#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
+#    handler: com.benrhine.gradlelambdatemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
 #    events:
 #      - http:
 #          path: /persons-rest
 #          method: get
 #          private: true   # This makes the api require an apiKey
   listPersonsHTTP:
-    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
+    handler: com.benrhine.gradlelambdatemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
     events:
       - httpApi:
           path: /${self:custom.stage}/persons-http
@@ -104,7 +104,7 @@ functions:
 #          authorizer:   # This attaches a jwt authorizer https://us-east-2.console.aws.amazon.com/apigateway/main/develop/auth/attach
 #            name: auth0Authorizer
 #  getPersonREST:
-#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
+#    handler: com.benrhine.gradlelambdatemplate.v1.lambda.aws.handler.PersonHandler::handleGetByParam
 #    events:
 #      - http:
 #          path: /persons-rest/{id}
@@ -113,7 +113,7 @@ functions:
 #    environment:
 #      TABLE_NAME: ${self:custom.personsTableName}
   getPersonHTTP:
-    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
+    handler: com.benrhine.gradlelambdatemplate.v1.lambda.aws.handler.GetPersonHandler::handleRequest
     events:
       - httpApi:
           path: /${self:custom.stage}/persons-http/{id}
@@ -123,7 +123,7 @@ functions:
     environment:
       TABLE_NAME: ${self:custom.personsTableName}
 #  createPersonREST:
-#    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.PersonHandler::handleRequest
+#    handler: com.benrhine.gradlelambdatemplate.v1.lambda.aws.handler.PersonHandler::handleRequest
 #    events:
 #      - http:
 #          path: /persons-rest
@@ -132,7 +132,7 @@ functions:
 #    environment:
 #      TABLE_NAME: ${self:custom.personsTableName}
   createPersonHTTP:
-    handler: com.boeing.BoeingGradleLambdaTemplate.v1.lambda.aws.handler.CreatePersonHandler::handleRequest
+    handler: com.benrhine.gradlelambdatemplate.v1.lambda.aws.handler.CreatePersonHandler::handleRequest
     events:
       - httpApi:
           path: /${self:custom.stage}/persons-http
