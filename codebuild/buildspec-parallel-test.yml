@@ -3,7 +3,13 @@ run-as: root                                                # Specify what user 
 
 env:                                                        # Environment specific settings
   shell: /bin/bash                                          # Specify what shell to use when executing
-  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+#  git-credential-helper: yes                                # Specify to remember git credentials (this may not be necessary)
+
+cache:
+  paths:
+    - '/root/.gradle/**/*'
+    - '/root/.m2/**/*'
+    - '.gradle/**/*'
 
 batch:          # Configuring the 'batch' block is the only way to achieve parallel execution using the aws build system
   fast-fail: true                                           # Fail as soon as one part of the build fails
@@ -19,4 +25,10 @@ batch:          # Configuring the 'batch' block is the only way to achieve paral
         variables:
           BUILD_ID: integration-test
       buildspec: .codebuild/buildspec-integration.yml       # Specify sub build instructions
+      ignore-failure: false                                 # Stop execution if something fails
+    - identifier: checkstyle                                # Identifiers may only contain underscores, NO DASHES!!!
+      env: # Environment variables available to the sub-build?
+        variables:
+          BUILD_ID: checkstyle
+      buildspec: .codebuild/buildspec-checkstyle.yml        # Specify sub build instructions
       ignore-failure: false                                 # Stop execution if something fails
