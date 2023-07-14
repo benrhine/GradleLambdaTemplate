@@ -1,0 +1,364 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+#
+# For further reference on "Resource" specific deploys please take a look at the following link(s)
+# - https://www.serverless.com/framework/docs/providers/aws/guide/iam
+#
+########################################################################################################################
+# README!!! The update section should be the only area of this file that a developer will need to update UNLESS they need
+# to define additional resources (other IAM, DB Tables, ect...). The values set under custom are build environment variables.
+# This file is a fully self encapsulated resource file and defines all the necessary roles required to build and deploy
+# the associated project. All the resources update their unique names based primarily off values defined under custom.
+########################################################################################################################
+# Update Section: ONLY UPDATE HERE!!!
+########################################################################################################################
+custom:                                                 # Set custom options / variables for serverless
+  serverlessPrefix: 'sls'                               # Short name for serverless
+  appShortName: bglt                                    # Short app name to prefix all policies with the application specific name
+  rolePrefix: Bglt                                      # Prefix role(s) with application specific name
+  repoName: boeing-gradle-lambda-template               # The repository name that this acts upon
+#  roleToAssume: codebuild-admin-role                    # The role that needs to be assumed
+#  roleToAssume: codebuild-${self:custom.serverlessPrefix}-${self:custom.appShortName}-admin-role
+  tablePerson: "${self:custom.serverlessPrefix}-${self:custom.appShortName}-person-${self:provider.stage}" # Name of table to create
+  # Reference: https://sst.dev/chapters/stages-in-serverless-framework.html
+  stage: ${opt:stage, self:provider.stage}              # use the --stage CLI option if it exists. If it does not, then use the default stage specified by provider.stage
+  envVar:
+    MESSAGE:
+      dev:   "This is the development environment"
+      test:  "This is the test environment"
+      rgrs:  "This is the regression environment"
+      stage: "This is the staging environment"
+      prod:  "This is the production environment"
+  # Reference: https://sst.dev/chapters/configure-multiple-aws-profiles.html
+  profiles:                                             # These values MUST match an AWS Profile in the `./aws/credentials` file. example [default]
+    dev:   default
+    test:  testAccount
+    rgrs:  rgrsAccount
+    stage: stageAccount
+    prod:  prodAccount
+
+########################################################################################################################
+# End Update Section
+########################################################################################################################
+frameworkVersion: '3'                                   # Set what version of serverless is being used
+
+service: ${self:custom.appShortName}-service-resources  # This should match the application name specified in the settings.gradle
+                                                        # Additionally, to the matching name add "-resources". If the service
+                                                        # name is not distinct, the resources will be removed when the application
+                                                        # is un-deployed.
+provider:
+  name: aws                                             # Selected cloud provider
+  stage: ${opt:stage, 'dev'}                            # Uses user specified stage (--stage VALUE) or defaults to dev
+  region: ${opt:region, 'us-west-2'}                    # Uses user specified region (--region VALUE) or defaults to `us-west-2`
+  logRetentionInDays: 30                                # Set log retention
+  deploymentBucket: # Collect all serverless deployment files in a single bucket
+    name: ${self:custom.serverlessPrefix}-regional-domain-deploy   # Specify bucket name
+    serverSideEncryption: AES256                        # Specify bucket encryption
+resources:                                              # Specify all resources below
+  Resources:                                            # Resource list
+    codebuildAdminRole:                                 # Resource name
+      Type: AWS::IAM::Role                              # Resource type
+      Properties:                                       # Resource properties
+        RoleName: codebuild-${self:custom.serverlessPrefix}-${self:custom.appShortName}-admin-role
+        AssumeRolePolicyDocument:                       # Role Configuration
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS:
+                  - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:iam'
+                        - ''
+                        - Ref: 'AWS::AccountId'
+                        - root
+              Action: sts:AssumeRole
+        ManagedPolicyArns:                              # Managed policies to attach to new role
+          - arn:aws:iam::aws:policy/AdministratorAccess
+    codebuildServiceRole:                               # Resource name
+      Type: AWS::IAM::Role                              # Resource type
+      Properties:                                       # Resource properties
+        Path: /service-role/                            # If you want a custom resource path
+        # required if you want to use 'serverless deploy --function' later on
+        RoleName: codebuild-${self:custom.serverlessPrefix}-${self:custom.appShortName}-build-deploy-service-role
+        AssumeRolePolicyDocument:                       # Role Configuration
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ${self:custom.appShortName}-log-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow # note that these rights are given in the default policy and are required if you want logs out of your lambda(s)
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:TagResource
+                  Resource:
+                    - 'arn:aws:logs:*:*:*'
+          - PolicyName: ${self:custom.appShortName}-build-log-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:TagResource
+                  Resource:
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:logs'
+                          - Ref: 'AWS::Region'
+                          - Ref: 'AWS::AccountId'
+                          - log-group:/aws/codebuild/${self:service}
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:logs'
+                          - Ref: 'AWS::Region'
+                          - Ref: 'AWS::AccountId'
+                          - log-group:/aws/codebuild/${self:service}:*
+          - PolicyName: ${self:custom.appShortName}-s3-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    - s3:GetObject
+                    - s3:GetObjectVersion
+                    - s3:GetBucketAcl
+                    - s3:GetBucketLocation
+                  Resource:
+                    - arn:aws:s3:::codepipeline-${self:provider.region}-*
+          - PolicyName: ${self:custom.appShortName}-repo-codecommit-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - codecommit:GitPull
+                  Resource:
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:codecommit'
+                          - Ref: 'AWS::Region'
+                          - Ref: 'AWS::AccountId'
+                          - ${self:custom.repoName}
+          - PolicyName: ${self:custom.appShortName}-codecommit-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - codecommit:List*
+                    - codecommit:Batch*
+                    - codecommit:Describe*
+                    - codecommit:Get*
+                    - codecommit:GitPull
+                    - codecommit:UploadArchive
+                    - codecommit:CancelUploadArchive
+                    - codecommit:EvaluatePullRequestApprovalRule
+                  Resource:
+                    - '*'
+          - PolicyName: ${self:custom.appShortName}-codebuild-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - codebuild:CreateReportGroup
+                    - codebuild:CreateReport
+                    - codebuild:UpdateReport
+                    - codebuild:BatchPutTestCases
+                    - codebuild:BatchPutCodeCoverages
+                  Resource:
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:codebuild'
+                          - Ref: 'AWS::Region'
+                          - Ref: 'AWS::AccountId'
+                          - report-group/${self:service}-*
+          - PolicyName: ${self:custom.appShortName}-codepipeline-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - codepipeline:GetPipelineExecution
+                    - codepipeline:StopPipelineExecution
+                    - codepipeline:ListPipelineExecutions
+                  Resource:
+                    - '*'
+          - PolicyName: ${self:custom.appShortName}-iam-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - iam:PassRole
+                  Resource:
+                    - '*'
+          - PolicyName: lambda-${self:custom.appShortName}-secretsmanager-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - kms:Decrypt
+                    - secretsmanager:GetResourcePolicy
+                    - secretsmanager:GetSecretValue
+                    - secretsmanager:DescribeSecret
+                    - secretsmanager:ListSecretVersionIds
+                  Resource:
+                    - '*'
+                - Effect: Allow
+                  Action:
+                    - secretsmanager:ListSecrets
+                  Resource:
+                    - '*'
+          # https://asecure.cloud/a/iam_ssm_3/
+          - PolicyName: codebuild-${self:custom.appShortName}-ssm-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:StartSession
+                    - ssm:TerminateSession
+                    - ssm:ResumeSession
+                    - ssm:DescribeSessions
+                    - ssm:GetConnectionStatus
+                    - ssm:DescribeSessions
+                    - ssm:GetConnectionStatus
+                    - ssm:DescribeInstanceProperties
+                    - ec2:DescribeInstances
+                  Resource:
+                    - '*'
+                - Effect: Allow
+                  Action:
+                    - ssm:CreateDocument
+                    - ssm:UpdateDocument
+                    - ssm:GetDocument
+                  Resource:
+                    - '*'
+          - PolicyName: ${self:custom.appShortName}-assume-role-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - sts:AssumeRole
+                  Resource:
+                    - 'Fn::Join':
+                        - ':'
+                        - - 'arn:aws:iam'
+                          - ''
+                          - Ref: 'AWS::AccountId'
+                          - role/${self:custom.serverlessPrefix}-domain-admin-role
+          - PolicyName: ${self:custom.appShortName}-dynamo-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:Query
+                    - dynamodb:Scan
+                    - dynamodb:GetItem
+                    - dynamodb:PutItem
+                    - dynamodb:UpdateItem
+                    - dynamodb:DeleteItem
+                  Resource:
+                    - { "Fn::GetAtt": [ "PersonsDynamoDBTable", "Arn" ] }
+#    codebuildApplicationBatchServiceRole:               # Resource name
+#      Type: AWS::IAM::Role                              # Resource type
+#      Properties:                                       # Resource properties
+#        Path: /service-role/                            # If you want a custom resource path
+#        RoleName: ${self:custom.serverlessPrefix}-${self:custom.appShortName}-codebuild-batch-service-role
+#        AssumeRolePolicyDocument:                       # Role Configuration
+#          Version: '2012-10-17'
+#          Statement:
+#            - Effect: Allow
+#              Principal:
+#                Service:
+#                  - codebuild.amazonaws.com
+#              Action: sts:AssumeRole
+#        Policies:                                       # Policy Configuration
+#          - PolicyName: ${self:custom.appShortName}-iam-policy
+#            PolicyDocument:
+#              Version: '2012-10-17'
+#              Statement:
+#                - Effect: Allow
+#                  Action:
+#                    - iam:PassRole
+#                  Resource:
+#                    - '*'
+##                    - arn:aws:iam::530712432331:role/service-role/${self:custom.serverlessPrefix}-${self:custom.appShortName}-codebuild-build-deploy-service-role
+#          - PolicyName: ${self:custom.appShortName}-codebuild-policy
+#            PolicyDocument:
+#              Version: '2012-10-17'
+#              Statement:
+#                - Effect: Allow
+#                  Action:
+#                    # The next 3 are required to allow parallel builds
+#                    - codebuild:StartBuild
+#                    - codebuild:StopBuild
+#                    - codebuild:RetryBuild
+#                  Resource:
+#                    - '*'
+##                    - Fn::Join:
+##                        - ':'
+##                        - - 'arn:aws:codebuild'
+##                          - Ref: 'AWS::Region'
+##                          - Ref: 'AWS::AccountId'
+##                          - project/${self:custom.repoName}
+#          - PolicyName: ${self:custom.appShortName}-assume-role-policy
+#            PolicyDocument:
+#              Version: '2012-10-17'
+#              Statement:
+#                - Effect: Allow
+#                  Action:
+#                    - sts:AssumeRole
+#                  Resource:
+#                    - Fn::Join:
+#                        - ':'
+#                        - - 'arn:aws:iam'
+#                          - ''
+#                          - Ref: 'AWS::AccountId'
+#                          - role/service-role/${self:custom.serverlessPrefix}-${self:custom.appShortName}-codebuild-build-deploy-service-role
+
+    PersonsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      #DeletionPolicy: Retain  # makes sure it does not get deleted but will still fail when it attempts to recreate
+      Properties:
+        TableName: ${self:custom.tablePerson}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        #          - AttributeName: name
+        #            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        #          - AttributeName: name
+        #            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
